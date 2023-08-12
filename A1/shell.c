@@ -3,28 +3,46 @@
 #include<unistd.h>
 #include<sys/wait.h>
 #include<string.h>
-int main(){
-	while(1){
+
+void command_ls()
+{
+    char *args[2];
+    args[0]=strdup("ls");
+    args[1]=NULL;
+    execvp(args[0],args);
+    return;
+}
+
+int main()
+{
+	while(1)
+    {
 		char user_input[100];
-		printf("MTL458>");
+		printf("\nMTL458>");
 		fflush(stdout);
 		fgets(user_input,sizeof(user_input),stdin);
 		user_input[strcspn(user_input,"\n")]='\0';
-		int pid = fork();
-		if(pid<0){
+		
+        int pid = fork();
+		if(pid<0)
+        {
 			printf("Error couldn't create a child process try again !\n");
-		}else if(pid==0){
+		}
+        else if(pid==0)
+        {
 			// child process got created
 			char *command = strtok(user_input," ");
-			if(strcmp("ls",command)==0){
-				char *args[2];
-				args[0]=strdup("ls");
-				args[1]=NULL;
-				execvp(args[0],args);
-			}else{
+			if(strcmp("ls",command) == 0)
+            {
+                command_ls();
+			}
+            else
+            {
 				printf("Command not supported\n");
 			}
-		}else{
+		}
+        else
+        {
 			int wc = wait(NULL);
 		}
 		
