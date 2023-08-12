@@ -49,11 +49,10 @@ void command_switch(char* command){
 
 int main(){
 	while(1){
-		char user_input[1000];
+        char user_input[1000];
         char *command = parse_input(user_input);
         command_switch(command);
-		// String length problem if input is less than hundered characters ?
-		printf("User input was %s",user_input);// Note that the user input has the newline character 
+        printf("User input was %s",user_input); // Note that the user input has the newline character
 	}
 
 
