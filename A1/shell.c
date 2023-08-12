@@ -4,8 +4,7 @@
 #include<sys/wait.h>
 #include<string.h>
 
-void command_ls()
-{
+void command_ls(){
     char *args[2];
     args[0]=strdup("ls");
     args[1]=NULL;
@@ -13,36 +12,26 @@ void command_ls()
     return;
 }
 
-int main()
-{
-	while(1)
-    {
+
+int main(){
+	while(1){
 		char user_input[100];
 		printf("\nMTL458>");
 		fflush(stdout);
 		fgets(user_input,sizeof(user_input),stdin);
 		user_input[strcspn(user_input,"\n")]='\0';
-		
-        int pid = fork();
-		if(pid<0)
-        {
+		int pid = fork();
+		if(pid<0){
 			printf("Error couldn't create a child process try again !\n");
-		}
-        else if(pid==0)
-        {
+		}else if(pid==0){
 			// child process got created
 			char *command = strtok(user_input," ");
-			if(strcmp("ls",command) == 0)
-            {
+			if(strcmp("ls",command)==0){
                 command_ls();
-			}
-            else
-            {
+			}else{
 				printf("Command not supported\n");
 			}
-		}
-        else
-        {
+		}else{
 			int wc = wait(NULL);
 		}
 		
