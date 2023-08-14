@@ -173,10 +173,10 @@ int main(){
     // Store the previously executed commands
     history_resize();
     while(1){
-        char *args[100];// problem a bit
-        char redir[100];// fixed ?
+        char *args[2048];// problem a bit
+        char redir[2048];// fixed ?
         int f=0;
-        char user_input[100];// right now fixed
+        char user_input[2048];// right now fixed
         printf("MTL458>");
         fflush(stdout);
         fgets(user_input,sizeof(user_input),stdin);
