@@ -5,7 +5,7 @@
 #include<string.h>
 #include<fcntl.h>
 
-#define clear() printf("\033[H\033[J")
+#define clear() printf("\e[1;1H\e[2J")
 
 // Create a global history
 char unix_commands[]= "ls-cat-echo-sleep";
@@ -24,8 +24,6 @@ void init_shell()
     printf("\n\n\t\tAssignment 1");
     printf("\n\n\n\n*******************"
         "***********************");
-    //char* username = getenv("USER");
-    //printf("\n\nUSER is: @%s", username);
     printf("\n");
     sleep(1);
     clear();
