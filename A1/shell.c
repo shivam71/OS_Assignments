@@ -5,6 +5,8 @@
 #include<string.h>
 #include<fcntl.h>
 
+#define clear() printf("\033[H\033[J")
+
 // Create a global history
 char unix_commands[]= "ls-cat-echo-sleep";
 char other_commands[]="cd-history";
@@ -13,6 +15,21 @@ char** history;//(char**)malloc(initial_capacity*sizeof(char*));
 int history_capacity=1;
 int history_size=0;
 
+void init_shell()
+{
+    clear();
+    printf("\n\n\n\n******************"
+        "************************");
+    printf("\n\n\n\t\tMTL458");
+    printf("\n\n\t\tAssignment 1");
+    printf("\n\n\n\n*******************"
+        "***********************");
+    //char* username = getenv("USER");
+    //printf("\n\nUSER is: @%s", username);
+    printf("\n");
+    sleep(1);
+    clear();
+}
 
 void history_resize(){
     char **temp = history;
@@ -171,6 +188,7 @@ int parse_simple(char *u_input,char *args[],char* redir){
 
 int main(){
     // Store the previously executed commands
+    init_shell();
     history_resize();
     while(1){
         char *args[2048];// problem a bit
