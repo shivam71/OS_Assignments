@@ -109,18 +109,20 @@ void piped_execute(char **pipe1, char **pipe2){
         close(fds[1]);
         execvp(pipe1[0],pipe1);
         printf("here\n");
-    }    
+    }
     close(fds[1]);
     close(fds[0]);
     wait(NULL);
+    wait(NULL);
+    return;
 }
 
 void execute(char *args[],char* redir){
     // when doing piping the execute might return an error ->check
      
-    int f =0;
+    int f = 0;
     if(valid(args[0],unix_commands)){
-        f=1;
+        f = 1;
     }
     if(f){
            int pid = fork();
