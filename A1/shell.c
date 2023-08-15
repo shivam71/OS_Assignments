@@ -100,18 +100,16 @@ void piped_execute(char **pipe1, char **pipe2){
         dup2(fds[0], STDIN_FILENO);
         close(fds[1]);
         close(fds[0]);
-        //printf("here\n");
-        
-        if(fork() == 0){
-            dup2(fds[1], STDOUT_FILENO);
-            close(fds[0]);
-            close(fds[1]);
-            execvp(pipe1[0],pipe1);
-            printf("here\n");
-        }
-        wait(NULL);
         execvp(pipe2[0],pipe2);
+        //printf("here\n");
     }
+    if(fork() == 0){
+        dup2(fds[1], STDOUT_FILENO);
+        close(fds[0]);
+        close(fds[1]);
+        execvp(pipe1[0],pipe1);
+        printf("here\n");
+    }    
     close(fds[1]);
     close(fds[0]);
     wait(NULL);
