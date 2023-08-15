@@ -17,6 +17,9 @@ int history_size=0;
 
 void init_shell()
 {
+    /*
+     the function creates an inital interface
+     */
     clear();
     printf("\n\n\n\n******************"
         "************************");
@@ -80,9 +83,14 @@ int valid(char *command,char *valid_commands){
 }
 
 void piped_execute(char **pipe1, char **pipe2){
-    // when doing piping the execute might return an error ->check
     
-    //also assumed pipe commands will only have inherenet unix commands
+    /*
+     pipe1, pipe2 : respective 2d arrays storing the commands on either sides of the pipe
+     the function executes both of them by using pipe
+     */
+    
+    // when doing piping the execute might return an error ->check
+    //assumed pipe commands will only have inherenet unix commands
     int fds[2];
     pipe(fds);
     
@@ -95,7 +103,7 @@ void piped_execute(char **pipe1, char **pipe2){
         return;
     }
     
-    //printf("here\n");
+    //child 1
     if(fork()==0){
         dup2(fds[0], STDIN_FILENO);
         close(fds[1]);
@@ -103,17 +111,17 @@ void piped_execute(char **pipe1, char **pipe2){
         execvp(pipe2[0],pipe2);
         //printf("here\n");
     }
+    //child 2
     if(fork() == 0){
         dup2(fds[1], STDOUT_FILENO);
         close(fds[0]);
         close(fds[1]);
         execvp(pipe1[0],pipe1);
-        printf("here\n");
     }
     close(fds[1]);
     close(fds[0]);
     wait(NULL);
-    wait(NULL);
+    wait(NULL);// 2 nulls needed as 2 child processes
     return;
 }
 
@@ -167,6 +175,14 @@ void execute(char *args[],char* redir){
 
 
 int piped_parse(char *u_input,char *piped_input[]){
+    
+    /*
+     u_input : user input
+     piped_input : 2d array that will store the individuals of the pipe
+     
+     the function updates the piped_input
+     */
+    
     char *user_input = strdup(u_input);
     
     int i = 0;
@@ -177,7 +193,6 @@ int piped_parse(char *u_input,char *piped_input[]){
         i+=1;
     }
     piped_input[i]=NULL;
-    //printf("%d\n", i);
     if(i == 2)//just taking two piped commands right now
     {
         return 1;
@@ -190,6 +205,11 @@ int piped_parse(char *u_input,char *piped_input[]){
 }
 
 int parse_simple(char *u_input,char *args[],char* redir){
+    /*
+     --function first checks if redirection is needed in execution
+     --it breaks multi-word user input into array of words
+     --args is this final 2d array
+     */
     char *user_input = strdup(u_input);
     if(strcspn(user_input,">")!=strlen(user_input)){
                                 // with redirection
@@ -201,21 +221,16 @@ int parse_simple(char *u_input,char *args[],char* redir){
             return 0;
         }
         while(strtok(NULL,">")!=NULL){}
-        //printf("%s|\n", word);
         
         char *word1 = strtok(word," ");
         while(strtok(NULL," ")!=NULL){}
-        //printf("%s|\n", word1);
         
         char *file_n1 = strtok(file_n," ");
-        //printf("%s|\n", file_n1);
         while(strlen(file_n1) < 4)
         {
             file_n1 = strtok(NULL, " ");
         }
         while(strtok(NULL," ")!=NULL){}
-        //printf("%s|\n", file_n1);
-
 
         strcpy(redir,file_n1);
 
