@@ -8,7 +8,7 @@
 #define clear() printf("\e[1;1H\e[2J")
 
 // Create a global history
-char unix_commands[]= "ls-cat-echo-sleep";
+char unix_commands[]= "ls-cat-echo-sleep-grep-wc";
 char other_commands[]="cd-history";
 int initial_capacity=1;
 char** history;//(char**)malloc(initial_capacity*sizeof(char*));
@@ -43,7 +43,7 @@ void history_resize(){
 void print_history(){
     int c_index = 0;
     while(c_index<history_size){
-        printf("%d %s\n",c_index+1,history[c_index]);
+        printf("%d. %s\n",c_index+1,history[c_index]);
         c_index++;
     }
     return;
@@ -79,6 +79,44 @@ int valid(char *command,char *valid_commands){
     return valid;
 }
 
+void piped_execute(char **pipe1, char **pipe2){
+    // when doing piping the execute might return an error ->check
+    
+    //also assumed pipe commands will only have inherenet unix commands
+    int fds[2];
+    pipe(fds);
+    
+    int f =0;
+    if(valid(pipe1[0],unix_commands) && valid(pipe2[0],unix_commands)){
+        f=1;
+    }
+    if(!f){
+        printf("Invalid input\n");
+        return;
+    }
+    
+    //printf("here\n");
+    if(fork()==0){
+        dup2(fds[0], STDIN_FILENO);
+        close(fds[1]);
+        close(fds[0]);
+        //printf("here\n");
+        
+        if(fork() == 0){
+            dup2(fds[1], STDOUT_FILENO);
+            close(fds[0]);
+            close(fds[1]);
+            execvp(pipe1[0],pipe1);
+            printf("here\n");
+        }
+        wait(NULL);
+        execvp(pipe2[0],pipe2);
+    }
+    close(fds[1]);
+    close(fds[0]);
+    wait(NULL);
+}
+
 void execute(char *args[],char* redir){
     // when doing piping the execute might return an error ->check
      
@@ -91,8 +129,8 @@ void execute(char *args[],char* redir){
                 if(pid<0){
                     printf("Invalid input\n");
                 }else if(pid==0){
-            printf("reached here\n");
-            printf("%s\n",redir);
+            //printf("reached here\n");
+            //printf("%s\n",redir);
             if(strcmp(redir,"\0")!=0){//assume valid file name check this before
                 close(STDOUT_FILENO);
                     int status = open(redir,O_CREAT|O_WRONLY|O_TRUNC,S_IRWXU);// can throw error ? handle
@@ -125,6 +163,30 @@ void execute(char *args[],char* redir){
 
     }
 
+}
+
+
+int piped_parse(char *u_input,char *piped_input[]){
+    char *user_input = strdup(u_input);
+    
+    int i = 0;
+    char *word = strtok(strdup(user_input),"|");
+    while(word!=NULL){
+        piped_input[i]=strdup(word);
+        word = strtok(NULL,"|");
+        i+=1;
+    }
+    piped_input[i]=NULL;
+    //printf("%d\n", i);
+    if(i == 2)//just taking two piped commands right now
+    {
+        return 1;
+    }
+    else
+    {
+        printf("Invalid Input\n");
+        return 0;
+    }
 }
 
 int parse_simple(char *u_input,char *args[],char* redir){
@@ -190,6 +252,9 @@ int main(){
     history_resize();
     while(1){
         char *args[2048];// problem a bit
+        char *piped_input[2048];
+        char *pipe1[2048];
+        char *pipe2[2048];
         char redir[2048];// fixed ?
         int f=0;
         char user_input[2048];// right now fixed
@@ -200,7 +265,19 @@ int main(){
         user_input[strcspn(user_input,"\n")]='\0';
         if(strchr(user_input,'|')!=NULL){
             // piped instruction
-            printf("Sorry piped instrcutions are not supported right now\n");
+            //printf("Sorry piped instrcutions are not supported right now\n");
+            int valid = piped_parse(user_input, piped_input);
+            if(valid){
+                int valid1 = parse_simple(piped_input[0], pipe1, redir);
+                int valid2 = parse_simple(piped_input[1], pipe2, redir);
+                //printf("%s|\n", pipe1[0]);
+                if(valid1 && valid2){
+                    //printf("here\n");
+                    piped_execute(pipe1, pipe2);
+                }
+            }else{
+                continue;
+            }
         }else{
             // non piped instruction
             int valid = parse_simple(user_input,args,redir);// for invalid input the parse function prints an error
@@ -208,10 +285,7 @@ int main(){
                 
                 execute(args,redir);
 
-            }else{
-                continue;
             }
-
         }
         update_history(user_input);
         // update the stored commands
