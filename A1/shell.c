@@ -274,17 +274,17 @@ int main(){
     // Store the previously executed commands
     init_shell();
     history_resize();
-    while(1){
+    char user_input[2048];
+    printf("MTL458>");
+    fflush(stdout);
+    while(fgets(user_input,sizeof(user_input),stdin)){
         char *args[2048];// problem a bit
         char *piped_input[2048];
         char *pipe1[2048];
         char *pipe2[2048];
         char redir[2048];// fixed ?
         int f=0;
-        char user_input[2048];// right now fixed
-        printf("MTL458>");
-        fflush(stdout);
-        fgets(user_input,sizeof(user_input),stdin);
+        // right now fixed
         // Handle empty string
         user_input[strcspn(user_input,"\n")]='\0';
 	if(strlen(user_input)==0){
@@ -314,6 +314,8 @@ int main(){
             }
         }
         update_history(user_input);
+	printf("MTL458>");
+        fflush(stdout);
         // update the stored commands
         // String length problem if input is less than hundered characters ?
         // Note that the user input has the newline character
