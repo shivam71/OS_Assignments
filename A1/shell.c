@@ -43,8 +43,9 @@ void history_resize(){
     }
 }
 
-void print_history(){
-    int c_index = 0;
+void print_history(int last_n){
+    
+    int c_index = history_size-last_n;
     while(c_index<history_size){
         printf("%d. %s\n",c_index+1,history[c_index]);
         c_index++;
@@ -161,18 +162,26 @@ void execute(char *args[],char* redir){
             }
 
         }else if(strcmp(args[0],"history")==0){
-            int num_args=1;
-            if(args[num_args]!=NULL){
-                printf("Invalid input\n");
+           
+            if(args[1]==NULL){
+                print_history(history_size);
+            }else if (args[2]==NULL){
+		int last_n = atoi(args[1]);// returns 0 if not an integer 
+	    	if(last_n==0||last_n>history_size){
+			printf("Invalid instruction\n");
+		}else{
+                	print_history(last_n);
+		}
             }else{
-                print_history();
-            }
-        }
+		printf("Invalid instruction\n");
+	    }
+
+        
+
+ 	   }
 
     }
-
 }
-
 
 int piped_parse(char *u_input,char *piped_input[]){
     
@@ -278,6 +287,10 @@ int main(){
         fgets(user_input,sizeof(user_input),stdin);
         // Handle empty string
         user_input[strcspn(user_input,"\n")]='\0';
+	if(strlen(user_input)==0){
+		printf("\n");
+		continue;// no need to update any history 
+	}
         if(strchr(user_input,'|')!=NULL){
             // piped instruction
             //printf("Sorry piped instrcutions are not supported right now\n");
@@ -290,8 +303,6 @@ int main(){
                     //printf("here\n");
                     piped_execute(pipe1, pipe2);
                 }
-            }else{
-                continue;
             }
         }else{
             // non piped instruction
