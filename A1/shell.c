@@ -167,7 +167,7 @@ void execute(char *args[],char* redir){
                 print_history(history_size);
             }else if (args[2]==NULL){
 		int last_n = atoi(args[1]);// returns 0 if not an integer 
-	    	if(last_n==0||last_n>history_size){
+	    	if(last_n<=0||last_n>history_size){
 			printf("Invalid instruction\n");
 		}else{
                 	print_history(last_n);
