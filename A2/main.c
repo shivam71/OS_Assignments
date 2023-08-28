@@ -2,14 +2,30 @@
 #include<stdlib.h>
 #include<string.h>
 
+struct Process{
+    char *PID;
+    float arrival_time;
+    float burst_time;
+    float waiting_time;
+    float finishing_time;
+    float turnaround_time;
+};
+
 struct Job{
     char *PID;
     float T_gen;
     float T_comp;
 };
 
-int job_comparator(const void *v1, const void *v2)
-{
+void job_to_process(struct Job){
+    
+}
+
+void FCFS(){
+    
+}
+
+int job_comparator(const void *v1, const void *v2){
     const struct Job *p1 = (struct Job *)v1;
     const struct Job *p2 = (struct Job *)v2;
     if(p1->T_gen != p2->T_gen)
@@ -26,6 +42,7 @@ void print_jobs(struct Job arr[], int n){
 
 int main(int argc, char* argv[]){
     struct Job jobs_list[200];
+    struct Process process_list[200];
     
     //if input has correct number of arguments
     if(argc != 2){
@@ -52,7 +69,7 @@ int main(int argc, char* argv[]){
         jobs_list[num_jobs].T_comp = atoi(strdup(word));
         num_jobs += 1;
     }
-    fclose(fp);    
+    fclose(fp);
     
     //sorting the jobs
     print_jobs(jobs_list, num_jobs);
