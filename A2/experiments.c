@@ -50,12 +50,9 @@ int main(int argc, char* argv[]){
         jobs_list[num_jobs].T_gen = atoi(strdup(word));
         word = strtok(NULL,"\n");
         jobs_list[num_jobs].T_comp = atoi(strdup(word));
-        //printf("%d job is : %s %f %f\n", num_jobs, jobs_list[num_jobs].PID, jobs_list[num_jobs].T_gen, jobs_list[num_jobs].T_comp);
         num_jobs += 1;
     }
-    fclose(fp);
-    //printf("number of jobs is : %d\n", num_jobs);
-    
+    fclose(fp);    
     
     //sorting the jobs
     print_jobs(jobs_list, num_jobs);
