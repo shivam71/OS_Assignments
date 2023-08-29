@@ -90,7 +90,7 @@ void run_FCFS(struct Job* wl, int num_jobs){
 void run_SJF(struct Job* wl, int num_jobs){
     //num jobs == num proccesses = num bursts, in FCFS
     struct Process p_list[num_jobs];
-    struct CPU_burst CPU_burst_ls[num_jobs]; //make this number a parameter
+    struct CPU_burst CPU_burst_ls[num_jobs];
     
     double curr_time = 0.0;
     for(int i = 0; i < num_jobs; i++)
@@ -148,12 +148,13 @@ int main(int argc, char* argv[]){
     int num_jobs = 0;
     while (fgets(buffer, MAX_LENGTH, fp)){
         //tokenise buffer
+        char* ptr;
         char *word = strtok(strdup(buffer)," ");
         jobs_list[num_jobs].PID = strdup(word);
         word = strtok(NULL," ");
-        jobs_list[num_jobs].T_gen = atoi(strdup(word)); //this is not taking doubles at present, edit it
+        jobs_list[num_jobs].T_gen = strtod(strdup(word), &ptr);
         word = strtok(NULL,"\n");
-        jobs_list[num_jobs].T_comp = atoi(strdup(word));
+        jobs_list[num_jobs].T_comp = strtod(strdup(word), &ptr);
         num_jobs += 1;
     }
     fclose(fp);
