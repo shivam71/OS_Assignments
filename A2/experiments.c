@@ -27,7 +27,6 @@ struct CPU_burst{
 
 /*void workload_resize(struct Job** wl,int new_size){
 	wl = (struct Job**)realloc(wl,sizeof(struct Job*)*10);
-
 }*/
 
 double sample_exp(double exp_param){
@@ -75,11 +74,11 @@ void compute_print_metrics(struct Process* p_list, int num_p){
 	double num_pr = (double) num_p;
 	for(int idx=0;idx<num_p;idx++){
 		avg_RT+=p_list[idx].RT;
-		avg_TT+=p_list[idx].TAT;
+		avg_TAT+=p_list[idx].TAT;
 	}
 	avg_RT/=num_pr;
-	avg_TT/=num_pr;
-	printf("%g %g\n",avg_TT,avg_RT);
+	avg_TAT/=num_pr;
+	printf("%g %g\n",avg_TAT,avg_RT);
 }
 
 
