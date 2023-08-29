@@ -9,6 +9,21 @@ struct Job{
 	double T_comp;
 };
 
+struct Process{
+	char* PID;
+	double T_gen;
+	double T_comp;
+	double T_first_sch;// time when first scheduled 
+	double T_finish;
+	double RT;// Response time 
+	double TAT;// Turnaround time
+};
+
+struct CPU_burst{
+	char* PID;
+	double T_start;
+	double T_end;
+};
 
 /*void workload_resize(struct Job** wl,int new_size){
 	wl = (struct Job**)realloc(wl,sizeof(struct Job*)*10);
@@ -43,6 +58,41 @@ void generate_wl(struct Job* wl,double exp_param,int num_jobs){
 	}
 }
 
+
+
+void print_process_exec_seq(struct CPU_burst* CPU_burst_ls,int num_bursts){
+	for(int idx=0;idx<num_bursts;idx++){
+		printf("%s %g %g ",CPU_burst_ls[idx].PID,CPU_burst_ls[idx].T_start,CPU_burst_ls[idx].T_end);
+	}
+	printf("\n");
+}
+
+void compute_print_metrics(struct Process* p_list, int num_p){
+	// compute the avg RT and avg TT
+	double avg_RT,avg_TAT;
+	avg_RT = 0.0;
+	avg_TAT = 0.0;
+	double num_pr = (double) num_p;
+	for(int idx=0;idx<num_p;idx++){
+		avg_RT+=p_list[idx].RT;
+		avg_TT+=p_list[idx].TAT;
+	}
+	avg_RT/=num_pr;
+	avg_TT/=num_pr;
+	printf("%g %g\n",avg_TT,avg_RT);
+}
+
+
+void run_FCFS(struct Job* wl){
+
+
+
+}
+
+void run_experiments(struct Job* wl){
+	run_FCFS(wl);
+}
+
 int main(){
 	int num_wls = 5;
 	int num_jobs[] ={1,2,3,4,5};
@@ -51,7 +101,8 @@ int main(){
 	for(int i=0;i<num_wls;i++){
 		workload = (struct Job*)realloc(workload,sizeof(struct Job)*num_jobs[i]);
 		printf("Generating Workload\n");
-		generate_wl(workload,exp_params[i],num_jobs[i]);	
+		generate_wl(workload,exp_params[i],num_jobs[i]);
+		run_experiments(workload);	
         }
 
 	return 0;
