@@ -25,9 +25,37 @@ struct CPU_burst{
 	double T_end;
 };
 
+struct Process_Node{// use this implementing a 	queue using linked list  use for RR and MLFQ
+	struct Process_Node* next;// pointer to the next Node in the list 
+	struct Process* process;// pointer to the process associated with this node (could have this for Job <-> Process )
+	double T_comp_left;//  Be careful while comparing double == 0  use double < epsilion 
+};
+
+struct Process_Queue{
+	struct Process_Node* head;// deletion update this // create a function  
+	struct Process_Node* tail;// insertion update this // create a function 
+	int size;
+};
+
+void insert_queue(struct Process_Queue* queue,struct Process_Node* node){
+	
+}
+
+void delete_queue(struct Process_Queue* queue){
+	
+}
+
+
+
 /*void workload_resize(struct Job** wl,int new_size){
 	wl = (struct Job**)realloc(wl,sizeof(struct Job*)*10);
 }*/
+
+double max_double(double first,double second){
+
+	return (first>second) ? first : second;
+
+}
 
 double sample_exp(double exp_param){
 	double prob;
@@ -82,14 +110,36 @@ void compute_print_metrics(struct Process* p_list, int num_p){
 }
 
 
-void run_FCFS(struct Job* wl){
-
-
-
+void run_FCFS(struct Job* wl,int num_jobs){
+	double curr_time = 0.0;
+	struct Process* p_list = malloc(sizeof(struct Process)*1);
+	p_list = (struct Process*) realloc(p_list,sizeof(struct Process)*num_jobs);
+	struct CPU_burst* CPU_burst_ls = malloc(sizeof(struct CPU_burst)*1);
+	CPU_burst_ls =(struct CPU_burst*)realloc(CPU_burst_ls,sizeof(struct CPU_burst)*num_jobs);// cannot do in all scheduling algos before hand
+    	for(int i = 0; i < num_jobs; i++)
+   	 {
+        	p_list[i].PID = wl[i].PID;
+        	p_list[i].T_gen = wl[i].T_gen;
+        	p_list[i].T_comp = wl[i].T_comp;
+        	p_list[i].T_first_sch = max_double(curr_time, wl[i].T_gen);
+        	p_list[i].T_finish = p_list[i].T_first_sch + p_list[i].T_comp;
+        	p_list[i].RT = p_list[i].T_first_sch - p_list[i].T_gen;
+        	p_list[i].TAT = p_list[i].T_finish - p_list[i].T_gen;
+        
+        	CPU_burst_ls[i].PID = wl[i].PID;
+       		CPU_burst_ls[i].T_start = p_list[i].T_first_sch;
+        	CPU_burst_ls[i].T_end = p_list[i].T_finish;
+        
+        	curr_time = p_list[i].T_finish;
+   	 }
+    	printf("FCFS : ");
+    	print_process_exec_seq(CPU_burst_ls, num_jobs);
+    	compute_print_metrics(p_list, num_jobs);
+    	return;
 }
 
-void run_experiments(struct Job* wl){
-	run_FCFS(wl);
+void run_experiments(struct Job* wl,int num_jobs){
+	run_FCFS(wl,num_jobs);
 }
 
 int main(){
@@ -101,7 +151,7 @@ int main(){
 		workload = (struct Job*)realloc(workload,sizeof(struct Job)*num_jobs[i]);
 		printf("Generating Workload\n");
 		generate_wl(workload,exp_params[i],num_jobs[i]);
-		run_experiments(workload);	
+		run_experiments(workload,num_jobs[i]);	
         }
 
 	return 0;
