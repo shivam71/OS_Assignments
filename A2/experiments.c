@@ -73,16 +73,47 @@ void add_job_to_plist(struct Job* wl,struct Process* p_list,int i){
                 p_list[i].T_gen = wl[i].T_gen;
                 p_list[i].T_comp = wl[i].T_comp;
 }
-void update_process(struct Process* process){
 
-
-
+void update_process(struct Process* pro_ptr,double T_fin){
+		pro_ptr->T_finish = T_fin;
+		pro_ptr->RT = (pro_ptr->T_first_sch)-(pro_ptr->T_gen);
+		pro_ptr->TAT=T_fin-(pro_ptr->T_gen);
 
 }
-void add_burst(struct CPU_burst* burst_ls,struct Process* pro_ptr,double start,double end,int num_bursts){
 
-
-
+struct CPU_burst* add_burst(struct CPU_burst* burst_ls,struct Process* pro_ptr,double start,double end,int* num_bursts, int* ls_cap){
+	//printf("Adding bursts\n");
+	if(*num_bursts==0){
+		burst_ls[0].PID = pro_ptr->PID;
+		burst_ls[0].T_start = start;
+		burst_ls[0].T_end = end;
+		*num_bursts=1;
+	}else{
+		// check if a new CPU burst needs to be created accordingly 
+		// also check if reallocation is required
+	//	printf("Problem\n");
+		int curr_num_bursts = *num_bursts;
+		if(strcmp(burst_ls[curr_num_bursts-1].PID,pro_ptr->PID)==0){
+			// no context switch 
+		
+			burst_ls[curr_num_bursts-1].T_end=end;
+		}else{
+			// new bursti
+	//		printf("Problem\n");
+			int curr_cap = *ls_cap;
+//			printf("%d  %d\n",curr_num_bursts,curr_cap);
+			if(curr_num_bursts==curr_cap){
+				burst_ls = (struct CPU_burst*)realloc(burst_ls,sizeof(struct CPU_burst)*curr_num_bursts*2);
+				*ls_cap= curr_num_bursts*2;
+			}
+	//		printf("Adding bursts\n");
+			burst_ls[curr_num_bursts].PID=pro_ptr->PID;
+			burst_ls[curr_num_bursts].T_start=start;
+			burst_ls[curr_num_bursts].T_end= end;
+			*num_bursts = curr_num_bursts+1;
+	}
+	}
+	return burst_ls;
 }
 
 /*void workload_resize(struct Job** wl,int new_size){
@@ -130,6 +161,7 @@ void print_process_exec_seq(struct CPU_burst* CPU_burst_ls,int num_bursts){
 		printf("%s %g %g ",CPU_burst_ls[idx].PID,CPU_burst_ls[idx].T_start,CPU_burst_ls[idx].T_end);
 	}
 	printf("\n");
+	free(CPU_burst_ls);
 }
 
 void compute_print_metrics(struct Process* p_list, int num_p){
@@ -145,6 +177,7 @@ void compute_print_metrics(struct Process* p_list, int num_p){
 	avg_RT/=num_pr;
 	avg_TAT/=num_pr;
 	printf("%g %g\n",avg_TAT,avg_RT);
+	free(p_list);
 }
 
 
@@ -188,6 +221,7 @@ void run_RR(struct Job* wl,int num_jobs,double TS){
         struct Process_Queue* queue_ptr = &pro_queue;
 	struct Process_Node* p_node_ptr =NULL;
 	struct Process* pro_ptr = NULL;
+	struct Process_Node* p_node_ptr_new =NULL; 
 	int job_idx = 0;
 	int queue_size =0;
 	double t_left = 0.0;
@@ -195,62 +229,77 @@ void run_RR(struct Job* wl,int num_jobs,double TS){
 	while(job_idx<num_jobs){// Invariant all the jobs which have T_gen <= curr_time  they have been added to the queue at least once
 		curr_time = wl[job_idx].T_gen;
 		next_time = wl[job_idx].T_gen;
-		while(next_time<=curr_time){
-			// create a process node and add to the queue 
-			// add to  the process list 
-			add_job_to_p_list(wl,p_list,job_idx);
-			struct Process_Node p_node = {NULL,p_list+job_idx,wl[job_idx].T_comp};
-			insert_queue(queue_ptr,&p_node);
-			job_idx+=1;
-			if(job_idx=num_jobs){
-				break;
-			}else{
-				next_time = wl[job_idx].T_gen;
-			}
+                 while(next_time<=curr_time){
+                        // create a process node and add to the queue
+                        // add to  the process list
+                                add_job_to_plist(wl,p_list,job_idx);
+                                p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+                                p_node_ptr_new->next= NULL;
+                                p_node_ptr_new->process = p_list+job_idx;
+                                p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                                insert_queue(queue_ptr,p_node_ptr_new);
+                                job_idx+=1;
+                                if(job_idx==num_jobs){
+                                        break;
+                                }else{
+                                        next_time = wl[job_idx].T_gen;
+                                }
 
-		}
-		
-
+                }
 		while((queue_ptr->size)>0){
-			p_node_ptr = queue_ptr->head;
+			p_node_ptr = &(*queue_ptr->head);
+	//		printf("PID %s",p_node_ptr->process->PID);
 			pro_ptr = p_node_ptr->process;
-			delete_queue(queue_ptr);
 			t_left  = p_node_ptr->T_comp_left;
+	//		printf("t_left before %g\n",t_left);
 			job_t_comp = pro_ptr->T_comp;
-
+			delete_queue(queue_ptr);
+	//		printf("PID after deletion %s\n",p_node_ptr->process->PID);
 			if(t_left==job_t_comp){// first schedule
 				pro_ptr->T_first_sch = curr_time;	
 			}
-
+	//		printf("Here\n");
 			if(t_left<=TS){
 				// job completed
-				add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+t_left);// take care of context switch or not 
+				CPU_burst_ls = add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+t_left,&num_bursts,&burst_ls_cap);// take care of context switch or not 
 				curr_time+=t_left;
 				update_process(p_node_ptr->process,curr_time);
 			}else{
 				// job not completed
-				add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+TS);
+	//			printf("Reached here\n");
+				CPU_burst_ls = add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+TS,&num_bursts,&burst_ls_cap);
+			
 				curr_time+=TS;
 			}
+	//		printf("Here again\n");
+			if(job_idx<num_jobs){
 			next_time = wl[job_idx].T_gen;
         	        while(next_time<=curr_time){
                         // create a process node and add to the queue
                         // add to  the process list
-                        	add_job_to_p_list(wl,p_list,job_idx);
-                        	struct Process_Node p_node = {NULL,p_list+job_idx,wl[job_idx].T_comp};
-                       		insert_queue(queue_ptr,&p_node);
+                        	add_job_to_plist(wl,p_list,job_idx);
+                        	p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+				p_node_ptr_new->next= NULL;
+				p_node_ptr_new->process = p_list+job_idx;
+				p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                       		insert_queue(queue_ptr,p_node_ptr_new);
                         	job_idx+=1;
-                        	if(job_idx=num_jobs){
+                        	if(job_idx==num_jobs){
                                 	break;
                         	}else{
                                 	next_time = wl[job_idx].T_gen;
                         	}
 
 	                }
+	//		printf("Here\n");
+			}
 			if(t_left>TS){
 				t_left-=TS;
+	//			printf("PID %s %g\n",p_node_ptr->process->PID,p_node_ptr->T_comp_left);
 				p_node_ptr->T_comp_left = t_left;
 				insert_queue(queue_ptr,p_node_ptr);
+	//			printf("t_left %g\n",t_left);
+	//			printf("t_left 2 %g\n",queue_ptr->tail->T_comp_left);
 
 			}
 		}
@@ -281,7 +330,7 @@ int main(){
 		workload = (struct Job*)realloc(workload,sizeof(struct Job)*num_jobs[i]);
 		printf("Generating Workload\n");
 		generate_wl(workload,exp_params[i],num_jobs[i]);
-		run_experiments(workload,num_jobs[i],5.0);	
+		run_experiments(workload,num_jobs[i],1.0);	
         }
 
 	return 0;
