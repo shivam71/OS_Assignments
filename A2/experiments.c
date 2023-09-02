@@ -66,7 +66,25 @@ void delete_queue(struct Process_Queue* queue){
 	}
 }
 
-
+void priority_boost(struct Process_Queue* queue_arr){
+	int size;
+	struct Process_Node* node_ptr = NULL;
+	for(int q_idx =1;q_idx<=2;q_idx++){
+		size = queue_arr[q_idx].size;
+		for(int idx=0;idx<size;idx++){
+			node_ptr = queue_arr[q_idx].head;
+			delete_queue(&queue_arr[q_idx]);
+			insert_queue(&queue_arr[0],node_ptr);
+		}
+	}
+}
+void init_queues(struct Process_Queue* queue_arr){
+	for(int idx=0;idx<3;idx++){
+		queue_arr[idx].size=0;
+		queue_arr[idx].head=NULL;
+		queue_arr[idx].tail=NULL;
+	}
+}
 
 void add_job_to_plist(struct Job* wl,struct Process* p_list,int i){
 		p_list[i].PID = wl[i].PID;
@@ -315,10 +333,175 @@ void run_RR(struct Job* wl,int num_jobs,double TS){
         return;
 }
 
+void run_MLFQ(struct Job* wl,int num_jobs,double Q1_TS,double Q2_TS,double Q3_TS,double T_PB){
+        // Array of queue ptrs
+	// Array of TS
+	// Should we stop the execution once the curr time is T_PB
+	//  curr_time > T_PB then PB similarly next -> curr_time+T_PB
+	//  Time for the next boost -> Stored 
+	// when we do PB -> How do we put the things in the Top queue -> Assume that 2nd queue then 3rd queue 
+	//  Add the jobs which have arrived during a time slice after the time slice into the first queue 
+	struct Process* p_list = malloc(sizeof(struct Process)*1);
+        p_list = (struct Process*) realloc(p_list,sizeof(struct Process)*num_jobs);
+        struct CPU_burst* CPU_burst_ls = malloc(sizeof(struct CPU_burst)*1);
+        int num_bursts = 0;
+        CPU_burst_ls =(struct CPU_burst*)realloc(CPU_burst_ls,sizeof(struct CPU_burst)*num_jobs);// at least this big
+        int burst_ls_cap = num_jobs;// use this for reallocation if needed
+	double TS_ls[] = {Q1_TS,Q2_TS,Q3_TS};
+	double TS = 0.0;
+	struct Process_Queue queue_arr[3];
+	init_queues(queue_arr);
+	struct 	Process_Node* p_node_ptr;
+	struct Process_Queue* queue_ptr;
+	struct Process_Node* p_node_ptr_new;
+	struct Process* pro_ptr = NULL;
+	int job_idx = 0;
+	int q_idx = 0;
+	int size_q1,size_q2,size_q3,curr_size;
+	double curr_time = 0.0;
+	double next_time,t_left,job_t_comp;
+	double next_PB = T_PB;// if all queues become empty then update the next_PB time 
+	while(job_idx<num_jobs){
+		// add jobs if all queues are empty
+		
+		curr_time = wl[job_idx].T_gen;
+		next_PB = curr_time+T_PB;// Cannot boost priority for empty queue 
+                next_time = wl[job_idx].T_gen;
+                while(next_time<=curr_time){
+                        // create a process node and add to the queue
+                        // add to  the process list
+				q_idx=0;//added new jobs 
+                                add_job_to_plist(wl,p_list,job_idx);
+                                p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+                                p_node_ptr_new->next= NULL;
+                                p_node_ptr_new->process = p_list+job_idx;
+                                p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                                insert_queue(&queue_arr[0],p_node_ptr_new);// always add jobs to the top queue
+                                job_idx+=1;
+                                if(job_idx==num_jobs){
+                                        break;
+                                }else{
+                                        next_time = wl[job_idx].T_gen;
+                                }
 
-void run_experiments(struct Job* wl,int num_jobs,double RR_TS){
+                }
+		q_idx = 0;// whenever you add jobs or PBoost  
+		size_q1 = queue_arr[0].size;
+		size_q2 = queue_arr[1].size;
+		size_q3= queue_arr[2].size;
+		while(size_q1>0 || size_q2>0 || size_q3>0){// change the queue we are doing RR on currently q_idx
+			//printf("q_idx %d size %d",q_idx,queue_arr[q_idx].size);
+			curr_size = queue_arr[q_idx].size;
+			queue_ptr = &queue_arr[q_idx];
+			TS = TS_ls[q_idx];
+			//while(curr_size>0){
+				// RR on the queue with q_idx 
+				// Exit this if time is more than the next PB 
+				// Exit this if any new process has arrived 
+			//	printf("Queue empty %d",queue_ptr->size);		   
+				   p_node_ptr = &(*queue_ptr->head);
+                      //printf("PID %s\n",p_node_ptr->process->PID);
+                       	pro_ptr = p_node_ptr->process;
+                        t_left  = p_node_ptr->T_comp_left;
+                      //printf("t_left before %g\n",t_left);
+                        job_t_comp = pro_ptr->T_comp;
+                        delete_queue(queue_ptr);
+                      //printf("PID after deletion %s\n",p_node_ptr->process->PID);
+                        if(t_left==job_t_comp){// first schedule
+                                pro_ptr->T_first_sch = curr_time;
+                        }
+                      //printf("Here\n");
+                        if(t_left<=TS){
+                                // job completed
+                                CPU_burst_ls = add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+t_left,&num_bursts,&burst_ls_cap);// take care of context switch or not
+                                curr_time+=t_left;
+                                update_process(p_node_ptr->process,curr_time);
+                        }else{
+                                // job not completed
+                        //      printf("Reached here\n");
+                                CPU_burst_ls = add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+TS,&num_bursts,&burst_ls_cap);
+
+                                curr_time+=TS;
+                        }
+                      //printf("Here again\n");
+                        if(job_idx<num_jobs){
+                        next_time = wl[job_idx].T_gen;
+			 while(next_time<=curr_time){
+                        // create a process node and add to the queue
+                        // add to  the process list
+                               // update q_idx
+                                add_job_to_plist(wl,p_list,job_idx);
+                                p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+                                p_node_ptr_new->next= NULL;
+                                p_node_ptr_new->process = p_list+job_idx;
+                                p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                                insert_queue(&queue_arr[0],p_node_ptr_new);// always add jobs to the top queue
+                                job_idx+=1;
+                                if(job_idx==num_jobs){
+                                        break;
+                                }else{
+                                        next_time = wl[job_idx].T_gen;
+                                }
+
+               		   }
+			}
+			if(t_left>TS){
+                                t_left-=TS;
+                        //      printf("PID %s %g\n",p_node_ptr->process->PID,p_node_ptr->T_comp_left);
+                                p_node_ptr->T_comp_left = t_left;
+				if(q_idx==2){// cannot further lower the priority 
+                                	insert_queue(queue_ptr,p_node_ptr);
+				}else{
+					insert_queue(&queue_arr[q_idx+1],p_node_ptr);// lower priority 
+				}
+                          //    printf("t_left %g\n",t_left);
+                  
+                        }
+
+
+
+			// when to do a p boost 
+			// Check if p boost is required then do it should I boost priority if everything has the highest priority
+			 
+			// When should the next p_boost be done
+			//printf("finding size\n");
+			if(curr_time>=next_PB){
+				next_PB=curr_time+T_PB;// change this one as well
+				priority_boost(queue_arr);
+			}
+			// update the q_idx
+			//printf("Size found\n");
+			size_q1 = queue_arr[0].size;
+                        size_q2 = queue_arr[1].size;
+                        size_q3= queue_arr[2].size;
+
+
+			if(size_q1>0){
+				q_idx=0;
+			}else if(size_q2>0){
+				q_idx=1;
+			//	printf("queue 2 non empty\n");
+			}else if(size_q3>0){
+				q_idx=2;
+			}else{
+				break;
+			}
+			
+		    
+
+		}
+	}
+	printf("MLFQ : ");
+        print_process_exec_seq(CPU_burst_ls, num_bursts);
+        compute_print_metrics(p_list, num_jobs);
+        return; 
+}
+
+
+void run_experiments(struct Job* wl,int num_jobs,double RR_TS,double Q1_TS,double Q2_TS,double Q3_TS,double T_PB){
 	run_FCFS(wl,num_jobs);
 	run_RR(wl,num_jobs,RR_TS);
+	run_MLFQ(wl,num_jobs,Q1_TS,Q2_TS,Q3_TS,T_PB);
 }
 
 int main(){
@@ -330,7 +513,7 @@ int main(){
 		workload = (struct Job*)realloc(workload,sizeof(struct Job)*num_jobs[i]);
 		printf("Generating Workload\n");
 		generate_wl(workload,exp_params[i],num_jobs[i]);
-		run_experiments(workload,num_jobs[i],1.0);	
+		run_experiments(workload,num_jobs[i],1.0,1.0,2.0,3.0,6.0);	
         }
 
 	return 0;
