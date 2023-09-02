@@ -36,6 +36,12 @@ struct Process_Queue{
 	struct Process_Node* tail;// insertion update this // create a function 
 	int size;
 };
+struct Process_PQueue{
+	struct Process_Node** arr;// array of process node pointers
+	int size;
+	int capacity;
+};
+
 
 void insert_queue(struct Process_Queue* queue,struct Process_Node* node){
 	int curr_size = queue->size;
@@ -66,6 +72,44 @@ void delete_queue(struct Process_Queue* queue){
 	}
 }
 
+
+void heapify_up(struct Process_PQueue* pro_pq,int pos){
+	if(pos==0) return;
+	int size = pro_pq->size;
+	// find the parent pos and compare with the parent and swap and call heapify_up on the parent 
+	int par_pos = 
+
+}
+void heapify_down(struct Process_PQueue* pro_pq,int pos){
+        int size = pro_pq->size;// check this out 
+        // find the parent pos and compare with the parent and swap and call heapify_up on the parent
+        int lc_pos = (2*pos)+1;
+	int rc_pos = (2*pos)+2;
+	// check if they are within bounds 
+
+
+}
+
+void insert_pq(struct Process_PQueue* pro_pq,struct Process_Node* node){
+	int size = pro_pq->size;
+	pro_pq->arr[size] = &(*node);
+	// follow the heapify up // handle cases when it was empty
+	if(size>0){
+		heapify_up(pro_pq,size);
+	}	
+	pro_pq->size = size+1;
+}
+struct Process_Node* extract_pq(struct Process_PQueue* pro_pq){
+	int size = pro_pq->size;
+	struct Process_Node* p_node = &(*(pro_pq->arr[0]));
+	pro_pq->arr[0] = &(*(pro_pq->arr[size-1]));// move the last to first
+	pro_pq->size-=1;
+	// follow the heapify down // handle cases when it becomes empty 
+	if(size>1){
+		heapify_down(pro_pq,0);
+	}
+	return p_node;
+}
 void priority_boost(struct Process_Queue* queue_arr){
 	int size;
 	struct Process_Node* node_ptr = NULL;
@@ -225,6 +269,114 @@ void run_FCFS(struct Job* wl,int num_jobs){
     	print_process_exec_seq(CPU_burst_ls, num_jobs);
     	compute_print_metrics(p_list, num_jobs);
     	return;
+}
+void run_SCTF(struct Job* wl,int num_jobs,double TS){
+	double curr_time = 0.0;
+        double next_time = 0.0;
+        struct Process* p_list = malloc(sizeof(struct Process)*1);
+        p_list = (struct Process*) realloc(p_list,sizeof(struct Process)*num_jobs);
+        struct CPU_burst* CPU_burst_ls = malloc(sizeof(struct CPU_burst)*1);
+        int num_bursts = 0;
+        CPU_burst_ls =(struct CPU_burst*)realloc(CPU_burst_ls,sizeof(struct CPU_burst)*num_jobs);// at least this big
+        int burst_ls_cap = num_jobs;// use this for reallocation if needed
+        struct Process_PQueue pro_pq;// insert_pq extract_pq
+        pro_pq.size = 0;
+	pro_pq.capacity = num_jobs;
+	pro_pq.arr = (struct Process_PQueue**)malloc(sizeof(struct Process_PQueue*)*num_jobs);
+        struct Process_PQueue* pqueue_ptr = &pro_queue;
+        struct Process_Node* p_node_ptr =NULL;
+        struct Process* pro_ptr = NULL;
+        struct Process_Node* p_node_ptr_new =NULL;
+        int job_idx = 0;
+        int pqueue_size =0;
+	double TS;
+        double t_left = 0.0;
+        double job_t_comp= 0.0;
+	while(job_idx<num_jobs){
+		curr_time = wl[job_idx].T_gen;
+                next_time = wl[job_idx].T_gen;
+                while(next_time<=curr_time){
+                        // create a process node and add to the queue
+                        // add to  the process list
+                                add_job_to_plist(wl,p_list,job_idx);
+                                p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+                                p_node_ptr_new->next= NULL;
+                                p_node_ptr_new->process = p_list+job_idx;
+                                p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                                insert_pq(pqueue_ptr,p_node_ptr_new);
+                                job_idx+=1;
+                                if(job_idx==num_jobs){
+                                        break;
+                                }else{
+                                        next_time = wl[job_idx].T_gen;
+                                }
+
+               }
+	       while(pro_pq.size>0){
+			p_node_ptr = extract_pq(pqueue_ptr);// front and pop 
+			TS = next_time-curr_time;
+			if(job_idx==num_jobs){
+				TS = p_node_ptr->T_comp_left;// current job goes till completion 
+			}
+			pro_ptr = p_node_ptr->process;
+                        t_left  = p_node_ptr->T_comp_left;
+        //              printf("t_left before %g\n",t_left);
+                        job_t_comp = pro_ptr->T_comp;
+                    
+        //              printf("PID after deletion %s\n",p_node_ptr->process->PID);
+                        if(t_left==job_t_comp){// first schedule
+                                pro_ptr->T_first_sch = curr_time;
+                        }
+        //              printf("Here\n");
+                        if(t_left<=TS){
+                                // job completed
+                                CPU_burst_ls = add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+t_left,&num_bursts,&burst_ls_cap);// take care of context switch or not
+                                curr_time+=t_left;
+                                update_process(p_node_ptr->process,curr_time);
+                        }else{
+                                // job not completed
+        //                      printf("Reached here\n");
+                                CPU_burst_ls = add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+TS,&num_bursts,&burst_ls_cap);
+
+                                curr_time+=TS;
+                        }
+			if(job_idx<num_jobs){
+                        next_time = wl[job_idx].T_gen;
+                        while(next_time<=curr_time){
+                        // create a process node and add to the queue
+                        // add to  the process list
+                                add_job_to_plist(wl,p_list,job_idx);
+                                p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+                                p_node_ptr_new->next= NULL;
+                                p_node_ptr_new->process = p_list+job_idx;
+                                p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                                insert_pq(pqueue_ptr,p_node_ptr_new);
+                                job_idx+=1;
+                                if(job_idx==num_jobs){
+                                        break;
+                                }else{
+                                        next_time = wl[job_idx].T_gen;
+                                }
+
+                        }
+        //              printf("Here\n");
+                        }
+                        if(t_left>TS){
+                                t_left-=TS;
+        //                      printf("PID %s %g\n",p_node_ptr->process->PID,p_node_ptr->T_comp_left);
+                                p_node_ptr->T_comp_left = t_left;
+                                insert_pq(pqueue_ptr,p_node_ptr);
+        //                      printf("t_left %g\n",t_left);
+        //                      printf("t_left 2 %g\n",queue_ptr->tail->T_comp_left);
+
+                        }
+
+	       }
+	}
+	printf("SCTF : ");
+        print_process_exec_seq(CPU_burst_ls, num_bursts);
+        compute_print_metrics(p_list, num_jobs);
+        return;
 }
 void run_RR(struct Job* wl,int num_jobs,double TS){
         double curr_time = 0.0;
@@ -500,6 +652,7 @@ void run_MLFQ(struct Job* wl,int num_jobs,double Q1_TS,double Q2_TS,double Q3_TS
 
 void run_experiments(struct Job* wl,int num_jobs,double RR_TS,double Q1_TS,double Q2_TS,double Q3_TS,double T_PB){
 	run_FCFS(wl,num_jobs);
+	run_SCTF(wl,num_jobs);
 	run_RR(wl,num_jobs,RR_TS);
 	run_MLFQ(wl,num_jobs,Q1_TS,Q2_TS,Q3_TS,T_PB);
 }
@@ -515,7 +668,17 @@ int main(){
 		generate_wl(workload,exp_params[i],num_jobs[i]);
 		run_experiments(workload,num_jobs[i],1.0,1.0,2.0,3.0,6.0);	
         }
-
+	workload = (struct Job*)malloc(sizeof(struct Job)*3);
+	workload[0].PID ="Job1";
+	workload[1].PID ="Job2";
+	workload[2].PID ="Job3";
+	workload[0].T_gen =0.0;
+        workload[1].T_gen =2.0;
+        workload[2].T_gen =2.0;
+	workload[0].T_comp =18.0;
+        workload[1].T_comp =7.0;
+        workload[2].T_comp =10.0;
+	run_experiments(workload,3,5.0,5.0,10.0,15.0,100.0);
 	return 0;
 }
 
