@@ -72,32 +72,81 @@ void delete_queue(struct Process_Queue* queue){
 	}
 }
 
+void swap(struct Process_Node** arr,int pos1,int pos2){
+	struct Process_Node* temp = arr[pos1];
+	arr[pos1] = arr[pos2];
+	arr[pos2] = temp;
+}
+
 
 void heapify_up(struct Process_PQueue* pro_pq,int pos){
 	if(pos==0) return;
 	int size = pro_pq->size;
 	// find the parent pos and compare with the parent and swap and call heapify_up on the parent 
-	int par_pos = 
+	int par_pos = (pos-1)/2;
+        double val_curr = pro_pq->arr[pos]->T_comp_left;
+	double val_par = pro_pq->arr[par_pos]->T_comp_left;
+	if(val_curr<val_par){
+		swap(pro_pq->arr,pos,par_pos);
+		heapify_up(pro_pq,par_pos);
+	}else{
+		return;
+	}	
 
 }
 void heapify_down(struct Process_PQueue* pro_pq,int pos){
+	// lexicographic is a problem -> Check 
         int size = pro_pq->size;// check this out 
         // find the parent pos and compare with the parent and swap and call heapify_up on the parent
         int lc_pos = (2*pos)+1;
 	int rc_pos = (2*pos)+2;
-	// check if they are within bounds 
+	double val_curr = pro_pq->arr[pos]->T_comp_left;
+	double val_lc;//pro_pq->arr[lc_pos]->T_comp_left;
+	double val_rc;//pro_pq->arr[rc_pos]->T_comp_left;
+	// check if they are within bounds
+	if(lc_pos<size && rc_pos<size){
+		val_lc = pro_pq->arr[lc_pos]->T_comp_left;
+		val_rc = pro_pq->arr[rc_pos]->T_comp_left;
+		if(val_lc<val_rc){
+			if(val_curr>val_lc){
+				swap(pro_pq->arr,pos,lc_pos);
+				heapify_down(pro_pq,lc_pos);
+			}
+		}else{
+			if(val_curr>val_rc){
+				swap(pro_pq->arr,pos,rc_pos);
+                                heapify_down(pro_pq,rc_pos);
 
+			}
+		}
+	}else if(lc_pos<size){
+		val_lc = pro_pq->arr[lc_pos]->T_comp_left;
+		if(val_curr>val_lc){
+                        swap(pro_pq->arr,pos,lc_pos);
+                        heapify_down(pro_pq,lc_pos);
+                }
 
+	}else if(rc_pos<size){
+		val_rc = pro_pq->arr[rc_pos]->T_comp_left;
+		if(val_curr>val_rc){
+                        swap(pro_pq->arr,pos,rc_pos);
+                        heapify_down(pro_pq,rc_pos);
+
+                }
+
+	}else{
+		return;
+	}	
 }
 
 void insert_pq(struct Process_PQueue* pro_pq,struct Process_Node* node){
 	int size = pro_pq->size;
 	pro_pq->arr[size] = &(*node);
 	// follow the heapify up // handle cases when it was empty
+	pro_pq->size = size+1;
 	if(size>0){
 		heapify_up(pro_pq,size);
 	}	
-	pro_pq->size = size+1;
 }
 struct Process_Node* extract_pq(struct Process_PQueue* pro_pq){
 	int size = pro_pq->size;
@@ -270,7 +319,92 @@ void run_FCFS(struct Job* wl,int num_jobs){
     	compute_print_metrics(p_list, num_jobs);
     	return;
 }
-void run_SCTF(struct Job* wl,int num_jobs,double TS){
+void run_SJF(struct Job* wl,int num_jobs){
+	double curr_time = 0.0;
+        double next_time = 0.0;
+        struct Process* p_list = malloc(sizeof(struct Process)*1);
+        p_list = (struct Process*) realloc(p_list,sizeof(struct Process)*num_jobs);
+        struct CPU_burst* CPU_burst_ls = malloc(sizeof(struct CPU_burst)*1);
+        int num_bursts = 0;
+        CPU_burst_ls =(struct CPU_burst*)realloc(CPU_burst_ls,sizeof(struct CPU_burst)*num_jobs);// at least this big
+        int burst_ls_cap = num_jobs;// use this for reallocation if needed
+        struct Process_PQueue pro_pq;// insert_pq extract_pq
+        pro_pq.size = 0;
+        pro_pq.capacity = num_jobs;
+        pro_pq.arr = (struct Process_Node**)malloc(sizeof(struct Process_Node*)*num_jobs);
+        struct Process_PQueue* pqueue_ptr = &pro_pq;
+        struct Process_Node* p_node_ptr =NULL;
+        struct Process* pro_ptr = NULL;
+        struct Process_Node* p_node_ptr_new =NULL;
+        int job_idx = 0;
+        int pqueue_size =0;
+        double TS;
+        double t_left = 0.0;
+        double job_t_comp= 0.0;
+	while(job_idx<num_jobs){
+                curr_time = wl[job_idx].T_gen;
+                next_time = wl[job_idx].T_gen;
+                while(next_time<=curr_time){
+                        // create a process node and add to the queue
+                        // add to  the process list
+                                add_job_to_plist(wl,p_list,job_idx);
+                                p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+                                p_node_ptr_new->next= NULL;
+                                p_node_ptr_new->process = p_list+job_idx;
+                                p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                                insert_pq(pqueue_ptr,p_node_ptr_new);
+                                job_idx+=1;
+                                if(job_idx==num_jobs){
+                                        break;
+                                }else{
+                                        next_time = wl[job_idx].T_gen;
+                                }
+
+               }
+	       while(pro_pq.size>0){
+                        p_node_ptr = extract_pq(pqueue_ptr);// front and pop
+                        pro_ptr = p_node_ptr->process;
+                        t_left  = p_node_ptr->T_comp_left;
+                        job_t_comp = pro_ptr->T_comp;
+
+                                pro_ptr->T_first_sch = curr_time;
+                                // job completed
+                                CPU_burst_ls = add_burst(CPU_burst_ls,pro_ptr,curr_time,curr_time+t_left,&num_bursts,&burst_ls_cap);// take care of context switch or not
+                                curr_time+=t_left;
+                                update_process(p_node_ptr->process,curr_time);
+			 if(job_idx<num_jobs){
+                        next_time = wl[job_idx].T_gen;
+                        while(next_time<=curr_time){
+                        // create a process node and add to the queue
+                        // add to  the process list
+                                add_job_to_plist(wl,p_list,job_idx);
+                                p_node_ptr_new = (struct Process_Node*)malloc(sizeof(struct Process_Node));
+                                p_node_ptr_new->next= NULL;
+                                p_node_ptr_new->process = p_list+job_idx;
+                                p_node_ptr_new->T_comp_left = wl[job_idx].T_comp;
+                                insert_pq(pqueue_ptr,p_node_ptr_new);
+                                job_idx+=1;
+                                if(job_idx==num_jobs){
+                                        break;
+                                }else{
+                                        next_time = wl[job_idx].T_gen;
+                                }
+
+                        }
+        //              printf("Here\n");
+                        }
+
+                   }
+
+               }
+        
+        printf("SJF : ");
+        print_process_exec_seq(CPU_burst_ls, num_bursts);
+        compute_print_metrics(p_list, num_jobs);
+        return;
+
+}
+void run_SCTF(struct Job* wl,int num_jobs){
 	double curr_time = 0.0;
         double next_time = 0.0;
         struct Process* p_list = malloc(sizeof(struct Process)*1);
@@ -282,8 +416,8 @@ void run_SCTF(struct Job* wl,int num_jobs,double TS){
         struct Process_PQueue pro_pq;// insert_pq extract_pq
         pro_pq.size = 0;
 	pro_pq.capacity = num_jobs;
-	pro_pq.arr = (struct Process_PQueue**)malloc(sizeof(struct Process_PQueue*)*num_jobs);
-        struct Process_PQueue* pqueue_ptr = &pro_queue;
+	pro_pq.arr = (struct Process_Node**)malloc(sizeof(struct Process_Node*)*num_jobs);
+        struct Process_PQueue* pqueue_ptr = &pro_pq;
         struct Process_Node* p_node_ptr =NULL;
         struct Process* pro_ptr = NULL;
         struct Process_Node* p_node_ptr_new =NULL;
@@ -320,10 +454,10 @@ void run_SCTF(struct Job* wl,int num_jobs,double TS){
 			}
 			pro_ptr = p_node_ptr->process;
                         t_left  = p_node_ptr->T_comp_left;
-        //              printf("t_left before %g\n",t_left);
+                      //printf("t_left before %g\n",t_left);
                         job_t_comp = pro_ptr->T_comp;
                     
-        //              printf("PID after deletion %s\n",p_node_ptr->process->PID);
+                      //printf("PID %s\n",p_node_ptr->process->PID);
                         if(t_left==job_t_comp){// first schedule
                                 pro_ptr->T_first_sch = curr_time;
                         }
@@ -652,6 +786,7 @@ void run_MLFQ(struct Job* wl,int num_jobs,double Q1_TS,double Q2_TS,double Q3_TS
 
 void run_experiments(struct Job* wl,int num_jobs,double RR_TS,double Q1_TS,double Q2_TS,double Q3_TS,double T_PB){
 	run_FCFS(wl,num_jobs);
+	run_SJF(wl,num_jobs);
 	run_SCTF(wl,num_jobs);
 	run_RR(wl,num_jobs,RR_TS);
 	run_MLFQ(wl,num_jobs,Q1_TS,Q2_TS,Q3_TS,T_PB);
