@@ -5,7 +5,7 @@ import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-
+import random 
 def create_dict(line):
     pro_dict ={}
     tokens = line.split()
@@ -40,13 +40,14 @@ def create_gantt(line,algo_name,prefix):
     name_fig = prefix+"_"+algo_name+".png"
     for idx in range(len(process_ls)):
          num_bursts = len(process_ls[idx][1])
-         x_pos = [idx for i in range(num_bursts)]
+         color_tuple = (random.uniform(0,1),random.uniform(0,1),random.uniform(0,1))
+         y_pos = [idx for i in range(num_bursts)]
          ls_PID.append(process_ls[idx][0])
-         ax.vlines(x_pos,process_ls[idx][1],process_ls[idx][2])
+         ax.hlines(y_pos,process_ls[idx][1],process_ls[idx][2],color = color_tuple,linewidth=10)
     ax.set_title(prefix+"_"+algo_name)
-    ax.set_xlabel("Jobs")
-    ax.set_ylabel("Time in ms")
-    ax.set_xticks([i for i in range(len(process_ls))],labels=ls_PID)
+    ax.set_ylabel("Jobs")
+    ax.set_xlabel("Time in ms")
+    ax.set_yticks([i for i in range(len(process_ls))],labels=ls_PID)
     plt.savefig(name_fig)
     return 
 

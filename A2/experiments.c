@@ -2,7 +2,7 @@
 #include<string.h>
 #include<stdlib.h>
 #include<math.h>
-
+FILE* fp;
 struct Job{
 	char *PID;
 	double T_gen;
@@ -244,9 +244,14 @@ double sample_exp(double exp_param){
 	double log_val = log(u);
 	return (-1.0)*log_val/exp_param;
 }
+double sample_uniform(double min,double max){
+        double prob;
+        prob = rand()/(RAND_MAX+1.0);
+        double x = min+((max-min)*(prob));//using inverse CDF
+        return x;
+}
 
-
-void generate_wl(struct Job* wl,double exp_param,int num_jobs){
+void generate_wl(struct Job* wl,double exp_param,double uni_a,double uni_b,int num_jobs){
 	wl[0].PID ="J0";
 	wl[0].T_gen =0.0;
 	wl[0].T_comp=sample_exp(exp_param);
@@ -260,7 +265,7 @@ void generate_wl(struct Job* wl,double exp_param,int num_jobs){
 		wl[idx].PID = malloc(len_req+2);
 		strcpy(wl[idx].PID,str_num);
 		wl[idx].T_gen=(wl[idx-1].T_gen)+sample_exp(exp_param);
-		wl[idx].T_comp=sample_exp(exp_param);
+		wl[idx].T_comp=sample_uniform(uni_a,uni_b);
 		printf("%s  %g  %g\n",wl[idx].PID,wl[idx].T_gen,wl[idx].T_comp);
 	}
 }
@@ -269,9 +274,11 @@ void generate_wl(struct Job* wl,double exp_param,int num_jobs){
 
 void print_process_exec_seq(struct CPU_burst* CPU_burst_ls,int num_bursts){
 	for(int idx=0;idx<num_bursts;idx++){
-		printf("%s %g %g ",CPU_burst_ls[idx].PID,CPU_burst_ls[idx].T_start,CPU_burst_ls[idx].T_end);
+		printf("%s %0.3f %0.3f ",CPU_burst_ls[idx].PID,CPU_burst_ls[idx].T_start,CPU_burst_ls[idx].T_end);
+		fprintf(fp,"%s %0.3f %0.3f ",CPU_burst_ls[idx].PID,CPU_burst_ls[idx].T_start,CPU_burst_ls[idx].T_end);
 	}
 	printf("\n");
+	fprintf(fp,"\n");
 	free(CPU_burst_ls);
 }
 
@@ -287,7 +294,8 @@ void compute_print_metrics(struct Process* p_list, int num_p){
 	}
 	avg_RT/=num_pr;
 	avg_TAT/=num_pr;
-	printf("%g %g\n",avg_TAT,avg_RT);
+	printf("%0.3f %0.3f\n",avg_TAT,avg_RT);
+	fprintf(fp,"%0.3f %0.3f\n",avg_TAT,avg_RT);
 	free(p_list);
 }
 
@@ -786,22 +794,40 @@ void run_MLFQ(struct Job* wl,int num_jobs,double Q1_TS,double Q2_TS,double Q3_TS
 
 void run_experiments(struct Job* wl,int num_jobs,double RR_TS,double Q1_TS,double Q2_TS,double Q3_TS,double T_PB){
 	run_FCFS(wl,num_jobs);
-	run_SJF(wl,num_jobs);
-	run_SCTF(wl,num_jobs);
 	run_RR(wl,num_jobs,RR_TS);
+	run_SJF(wl,num_jobs);
+        run_SCTF(wl,num_jobs);
 	run_MLFQ(wl,num_jobs,Q1_TS,Q2_TS,Q3_TS,T_PB);
 }
 
 int main(){
+	
 	int num_wls = 5;
 	int num_jobs[] ={1,2,3,4,5};
+	int num_params_set = 4;
+	double RR_TS[] = {1.0,2.0,3.0,4.0};
+	double Q1_TS[] = {2.0,3.0,4.0,5.0};
+	double Q2_TS[] = {3.0,4.0,5.0,6.0};
+	double Q3_TS[] = {4.0,5.0,6.0,7.0};
+	double T_PB[] = {8.0,10.0,12.0,14.0};
 	double exp_params[] ={0.1,0.2,0.3,0.4,0.5};
+	double uniform_a[] ={1.0,2.0,3.0,4.0};
+	double uniform_b[] ={5.0,6.0,7.0,8.0};
 	struct Job* workload = malloc(sizeof(struct Job)*1);
+	char* name_out_file = NULL;
 	for(int i=0;i<num_wls;i++){
 		workload = (struct Job*)realloc(workload,sizeof(struct Job)*num_jobs[i]);
-		printf("Generating Workload\n");
-		generate_wl(workload,exp_params[i],num_jobs[i]);
-		run_experiments(workload,num_jobs[i],1.0,1.0,2.0,3.0,6.0);	
+	//	printf("Generating Workload\n");
+		generate_wl(workload,exp_params[i],uniform_a[i],uniform_b[i],num_jobs[i]);
+		for(int j =0;j<num_params_set;j++){
+			int exp_num = (i*num_params_set)+j;
+			int len_req = snprintf(NULL,0,"%d",exp_num);
+			name_out_file = realloc(name_out_file,len_req+17);
+			snprintf(name_out_file,len_req+17,"exp_%d_outputs.txt",exp_num);
+			fp = fopen(name_out_file,"w");
+			run_experiments(workload,num_jobs[i],RR_TS[j],Q1_TS[j],Q2_TS[j],Q3_TS[j],T_PB[j]);
+			fclose(fp);
+		}
         }
 	workload = (struct Job*)malloc(sizeof(struct Job)*3);
 	workload[0].PID ="Job1";
@@ -813,7 +839,7 @@ int main(){
 	workload[0].T_comp =18.0;
         workload[1].T_comp =7.0;
         workload[2].T_comp =10.0;
-	run_experiments(workload,3,5.0,5.0,10.0,15.0,100.0);
+	//run_experiments(workload,3,5.0,5.0,10.0,15.0,100.0);
 	return 0;
 }
 
