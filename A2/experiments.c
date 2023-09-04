@@ -392,7 +392,7 @@ void run_SJF(struct Job* wl,int num_jobs){
       		}
 
 	}
-        
+	free(pro_pq.arr);        
         printf("SJF : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
@@ -494,6 +494,7 @@ void run_SCTF(struct Job* wl,int num_jobs){
 
 	       }
 	}
+	free(pro_pq.arr);
 	printf("SCTF : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
@@ -585,6 +586,7 @@ void run_RR(struct Job* wl,int num_jobs,double TS){
 			}
 		}
 	}
+	
         printf("RR : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
@@ -724,6 +726,7 @@ void run_MLFQ(struct Job* wl,int num_jobs,double Q1_TS,double Q2_TS,double Q3_TS
 
 		}
 	}
+	
 	printf("MLFQ : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
@@ -741,44 +744,31 @@ void run_experiments(struct Job* wl,int num_jobs,double RR_TS,double Q1_TS,doubl
 
 int main(){
 	
-	int num_wls = 5;
-	int num_jobs[] ={10,10,10,10,10};
-	int num_params_set = 4;
-	double RR_TS[] = {1.0,2.0,3.0,4.0};
-	double Q1_TS[] = {2.0,3.0,4.0,5.0};
-	double Q2_TS[] = {4.0,6.0,8.0,10.0};
-	double Q3_TS[] = {8.0,12.0,16.0,14.0};
-	double T_PB[] = {8.0,12.0,10.0,10.0};
-	double exp_params[] ={0.05,0.1,0.2,0.4,0.8};//rate parameter
-	double uniform_a[] ={10.0,1.0,10.0,20.0};
-	double uniform_b[] ={10.0,10.0,100.0,30.0};
+	int num_exps = 5;
+	int num_jobs[] ={100,10,1000,1000,1000};
+	double RR_TS[] = {1.0,1.0,1.0,5.0,10.0};
+	double Q1_TS[] = {1.0,1.0,1.0,1.0,1.0};
+	double Q2_TS[] = {2.0,2.0,2.0,2.0,2.0};
+	double Q3_TS[] = {3.0,3.0,5.0,5.0,5.0};
+	double T_PB[] = {6.0,6.0,15.0,15.0,15.0};
+	double exp_params[] ={10000.0,0.1,0.1,0.1,0.1};//rate parameter
+	double uniform_a[] ={1.0,10.0,1.0,1.0,1.0};
+	double uniform_b[] ={10.0,10.0,10.0,10.0,10.0};
 	struct Job* workload = malloc(sizeof(struct Job)*1);
 	char* name_out_file = NULL;
-	for(int i=0;i<num_wls;i++){
+	for(int i=0;i<num_exps;i++){
 		workload = (struct Job*)realloc(workload,sizeof(struct Job)*num_jobs[i]);
 		printf("Generating Workload\n");
 		generate_wl(workload,exp_params[i],uniform_a[i],uniform_b[i],num_jobs[i]);
-		for(int j =0;j<num_params_set;j++){
-			int exp_num = (i*num_params_set)+j;
-			int len_req = snprintf(NULL,0,"%d",exp_num);
-			name_out_file = realloc(name_out_file,len_req+17);
-			snprintf(name_out_file,len_req+17,"exp_%d_outputs.txt",exp_num);
-			fp = fopen(name_out_file,"w");
-			run_experiments(workload,num_jobs[i],RR_TS[j],Q1_TS[j],Q2_TS[j],Q3_TS[j],T_PB[j]);
-			fclose(fp);
-		}
+		int exp_num = i;
+		int len_req = snprintf(NULL,0,"%d",exp_num);
+		name_out_file = realloc(name_out_file,len_req+17);
+		snprintf(name_out_file,len_req+17,"exp_%d_outputs.txt",exp_num);
+		fp = fopen(name_out_file,"w");
+		run_experiments(workload,num_jobs[i],RR_TS[i],Q1_TS[i],Q2_TS[i],Q3_TS[i],T_PB[i]);
+		fclose(fp);
+		
         }
-	workload = (struct Job*)malloc(sizeof(struct Job)*3);
-	workload[0].PID ="Job1";
-	workload[1].PID ="Job2";
-	workload[2].PID ="Job3";
-	workload[0].T_gen =0.0;
-        workload[1].T_gen =2.0;
-        workload[2].T_gen =2.0;
-	workload[0].T_comp =18.0;
-        workload[1].T_comp =7.0;
-        workload[2].T_comp =10.0;
-	run_experiments(workload,3,5.0,5.0,10.0,15.0,100.0);
 	return 0;
 }
 
