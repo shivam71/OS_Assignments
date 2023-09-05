@@ -268,7 +268,7 @@ void compute_print_metrics(struct Process* p_list, int num_p){
     }
     avg_RT/=num_pr;
     avg_TAT/=num_pr;
-    fprintf(fp, "%g %g\n",avg_TAT,avg_RT);
+    fprintf(fp, "%.2f %.2f\n",avg_TAT,avg_RT);
 }
 
 void run_FCFS(struct Job* wl,int num_jobs){
@@ -293,7 +293,7 @@ void run_FCFS(struct Job* wl,int num_jobs){
         
             curr_time = p_list[i].T_finish;
         }
-        fprintf(fp, "FCFS : ");
+        //fprintf(fp, "FCFS : ");
         print_process_exec_seq(CPU_burst_ls, num_jobs);
         compute_print_metrics(p_list, num_jobs);
         return;
@@ -377,7 +377,7 @@ void run_SJF(struct Job* wl,int num_jobs){
 
                }
         
-        fprintf(fp, "SJF : ");
+        //fprintf(fp, "SJF : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
         return;
@@ -486,7 +486,7 @@ void run_SCTF(struct Job* wl,int num_jobs){
 
            }
     }
-    fprintf(fp, "SCTF : ");
+    //fprintf(fp, "SCTF : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
         return;
@@ -592,7 +592,7 @@ void run_RR(struct Job* wl,int num_jobs,double TS){
         // When the process finishes in the TS alloted or earlier
         // Update the process completion time in the process list
     }
-        fprintf(fp, "RR : ");
+        //fprintf(fp, "RR : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
         return;
@@ -756,7 +756,7 @@ void run_MLFQ(struct Job* wl,int num_jobs,double Q1_TS,double Q2_TS,double Q3_TS
 
         }
     }
-    fprintf(fp, "MLFQ : ");
+    //fprintf(fp, "MLFQ : ");
         print_process_exec_seq(CPU_burst_ls, num_bursts);
         compute_print_metrics(p_list, num_jobs);
         return;
@@ -764,9 +764,9 @@ void run_MLFQ(struct Job* wl,int num_jobs,double Q1_TS,double Q2_TS,double Q3_TS
 
 void run_experiments(struct Job* wl,int num_jobs,double RR_TS,double Q1_TS,double Q2_TS,double Q3_TS,double T_PB){
     run_FCFS(wl,num_jobs);
+    run_RR(wl,num_jobs,RR_TS);
     run_SJF(wl,num_jobs);
     run_SCTF(wl,num_jobs);
-    run_RR(wl,num_jobs,RR_TS);
     run_MLFQ(wl,num_jobs,Q1_TS,Q2_TS,Q3_TS,T_PB);
 }
 
