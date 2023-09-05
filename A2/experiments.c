@@ -261,7 +261,24 @@ void generate_wl(struct Job* wl,double exp_param,double uni_a,double uni_b,int n
 		printf("%s  %g  %g\n",wl[idx].PID,wl[idx].T_gen,wl[idx].T_comp);
 	}
 }
-
+void generate_wl_long_first(struct Job* wl,double exp_param,double start_exp_param,int num_jobs){
+        wl[0].PID ="J0";
+        wl[0].T_gen =0.0;
+        wl[0].T_comp=sample_exp(start_exp_param);
+        printf("%s  %g  %g\n",wl[0].PID,wl[0].T_gen,wl[0].T_comp);
+        char* str_num = malloc(10);
+        for(int idx=1;idx<num_jobs;idx++){
+                int len_req = snprintf(NULL,0,"%d",idx);
+                str_num = (char *)realloc(str_num,len_req+2);
+                str_num[0]='J';
+                snprintf(str_num+1,len_req+1,"%d",idx);
+                wl[idx].PID = malloc(len_req+2);
+                strcpy(wl[idx].PID,str_num);
+                wl[idx].T_gen=(wl[idx-1].T_gen)+sample_exp(exp_param);
+                wl[idx].T_comp=sample_exp(start_exp_param*idx);
+                printf("%s  %g  %g\n",wl[idx].PID,wl[idx].T_gen,wl[idx].T_comp);
+        }
+}
 
 
 void print_process_exec_seq(struct CPU_burst* CPU_burst_ls,int num_bursts){
@@ -744,16 +761,16 @@ void run_experiments(struct Job* wl,int num_jobs,double RR_TS,double Q1_TS,doubl
 
 int main(){
 	
-	int num_exps = 5;
-	int num_jobs[] ={100,10,1000,1000,1000};
-	double RR_TS[] = {1.0,1.0,1.0,5.0,10.0};
-	double Q1_TS[] = {1.0,1.0,1.0,1.0,1.0};
-	double Q2_TS[] = {2.0,2.0,2.0,2.0,2.0};
-	double Q3_TS[] = {3.0,3.0,5.0,5.0,5.0};
-	double T_PB[] = {6.0,6.0,15.0,15.0,15.0};
-	double exp_params[] ={10000.0,0.1,0.1,0.1,0.1};//rate parameter
-	double uniform_a[] ={1.0,10.0,1.0,1.0,1.0};
-	double uniform_b[] ={10.0,10.0,10.0,10.0,10.0};
+	int num_exps = 6;
+	int num_jobs[] ={100,10,1000,1000,1000,1000};
+	double RR_TS[] = {1.0,1.0,1.0,5.0,10.0,1.0};
+	double Q1_TS[] = {1.0,1.0,1.0,1.0,1.0,1.0};
+	double Q2_TS[] = {2.0,2.0,2.0,2.0,2.0,5.0};
+	double Q3_TS[] = {3.0,3.0,5.0,5.0,5.0,10.0};
+	double T_PB[] = {6.0,6.0,15.0,15.0,15.0,10.0};
+	double exp_params[] ={10000.0,0.2,0.1,0.1,0.1,0.0001};//rate parameter
+	double uniform_a[] ={1.0,10.0,1.0,1.0,1.0,1.0};
+	double uniform_b[] ={10.0,10.0,10.0,10.0,10.0,10.0};
 	struct Job* workload = malloc(sizeof(struct Job)*1);
 	char* name_out_file = NULL;
 	for(int i=0;i<num_exps;i++){
@@ -769,6 +786,16 @@ int main(){
 		fclose(fp);
 		
         }
+	workload = (struct Job*)realloc(workload,sizeof(struct Job)*1000);
+        printf("Generating Workload\n");
+        generate_wl_long_first(workload,0.02,0.0001,1000);// exp_param for interarrival then start_exp_param then num_jobs
+        int exp_num = 6;
+        int len_req = snprintf(NULL,0,"%d",6);
+        name_out_file = realloc(name_out_file,len_req+17);
+        snprintf(name_out_file,len_req+17,"exp_%d_outputs.txt",exp_num);
+        fp = fopen(name_out_file,"w");
+        run_experiments(workload,1000,5.0,5.0,10.0,15.0,100.0);
+        fclose(fp);
 	return 0;
 }
 
