@@ -13,11 +13,12 @@ struct node{
 	struct node* next;
 };
 size_t heap_size;
-void* heap_start_ptr,heap_end_ptr;
+void* heap_start_ptr;
+void* heap_end_ptr;
 struct node* head_ls = NULL;
 int len_ls = 0;// Check that whenever we modify the free list that we change the size and the header 
 int num_alloc_blocks = 0;
-int magic_num = 12345;// check this
+size_t magic_num = 12345;// check this
 size_t header_size = sizeof(struct node);
 
 void initialize(){
@@ -26,9 +27,16 @@ void initialize(){
         PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
 	head_ls->size=heap_size-header_size;
 	head_ls->next=NULL;
-	heap_start_ptr = head_ls;
-	heap_end_ptr = head_ls+heap_size-1;
+	heap_start_ptr =(void*)head_ls;
+	heap_end_ptr = ((void*)head_ls);
+	heap_end_ptr+=heap_size;
+	// one more than the end of the heap (??) check 
+	heap_end_ptr-=1;
+	int succ = brk(heap_end_ptr+1);
+	printf("%d\n",succ);
+	printf("%p\n",sbrk(0));
 	len_ls=1;
+	
 	//Always maintain non empty free list
 	// Function to allocate memory using mmap
 }
@@ -82,7 +90,8 @@ void delete_node(struct node* prev_ptr,struct node* curr_ptr){
 
 struct node* expand_heap(size_t block_size){
 	struct node* new_block_ptr;
-        new_block_ptr= sbrk(block_size);
+	printf("current break %p",sbrk(0));
+        new_block_ptr= sbrk((int)block_size);
 	heap_size+=block_size;
 //	end_vir_addr+=(block_size);//check once
         update_header(new_block_ptr,block_size,NULL);
@@ -92,7 +101,7 @@ struct node* expand_heap(size_t block_size){
 
 }
 
-bool do_coalesce(struct *node prev,struct *node next){
+bool do_coalesce(struct node* prev,struct node* next){
 	size_t prev_size = prev->size;
 	prev = (void*) prev;
 	next = (void*) next;
@@ -100,7 +109,7 @@ bool do_coalesce(struct *node prev,struct *node next){
 	return (prev==next);
 }
 
-void coalesce(struct *node prev,struct *node next){
+void coalesce(struct node* prev,struct node* next){
 	// condition that we checked for do coalesce already holds
 	len_ls-=1;// IMP don't forget 
 	size_t total_free_size = (prev->size)+(header_size)+(next->size);
@@ -169,10 +178,12 @@ void* my_malloc(size_t size) {
 	    curr_size = curr_ptr->size;
             if(do_split(size,curr_size)){
                         return_ptr = split(curr_ptr,size);
+			
             }else{
                         // just delete the node
                        delete_node(prev_ptr,curr_ptr);
                        update_header(curr_ptr,curr_size,(struct node*)magic_num);
+		       printf("%p\n",curr_ptr);
                        return_ptr = get_ptr_to_return(curr_ptr);
            }
 
@@ -205,8 +216,8 @@ void my_free(void* ptr) {
     //  insert 
     //  coalesce 
     num_alloc_blocks-=1;
-    void* node next_ptr = head_ls;
-    void* node prev_ptr = NULL;
+    void*  next_ptr = head_ls;
+    void*  prev_ptr = NULL;
     ptr = get_header_ptr(ptr);
     while(next_ptr!=NULL){
 		if(ptr<next_ptr){// check if the type of the pointer matter while doing pointer comparison 
@@ -215,7 +226,7 @@ void my_free(void* ptr) {
 			continue;
                }
 	       prev_ptr = next_ptr;
-	       next_ptr = (void*) (((struct node*)next_ptr)->next)
+	       next_ptr = (void*) (((struct node*)next_ptr)->next);
     }
     insert_free_ls(ptr,prev_ptr,next_ptr);
     if(next_ptr!=NULL){
@@ -254,7 +265,8 @@ void debug(){
 		ptr_raw = (prev_block_ptr)+(prev_block_size+header_size);
 		ptr_node = (struct node*)ptr_raw;
 		printf("block index = %d , size = %d , addr = %p , ",idx,ptr_node->size,ptr_raw);
-		if((int)(ptr_node->next)==magic_num){
+		printf("%p %p",ptr_node->next,magic_num);
+		if((ptr_node->next)==(struct node*)magic_num){
 			printf("status = Allocated\n");
 		}else{
 			printf("status = FREE\n");
