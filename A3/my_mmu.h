@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include<unistd.h>
-#include<stdbool.h>
+#include <unistd.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 // Include your Headers below
@@ -33,8 +33,8 @@ void initialize(){
 	// one more than the end of the heap (??) check 
 	heap_end_ptr-=1;
 	int succ = brk(heap_end_ptr+1);
-	printf("%d\n",succ);
-	printf("%p\n",sbrk(0));
+	//printf("%d\n",succ);
+	//printf("%p\n",sbrk(0));
 	len_ls=1;
 	
 	//Always maintain non empty free list
@@ -90,7 +90,7 @@ void delete_node(struct node* prev_ptr,struct node* curr_ptr){
 
 struct node* expand_heap(size_t block_size){
 	struct node* new_block_ptr;
-	printf("current break %p",sbrk(0));
+	//printf("current break %p",sbrk(0));
         new_block_ptr= sbrk((int)block_size);
 	heap_size+=block_size;
 //	end_vir_addr+=(block_size);//check once
@@ -183,7 +183,7 @@ void* my_malloc(size_t size) {
                         // just delete the node
                        delete_node(prev_ptr,curr_ptr);
                        update_header(curr_ptr,curr_size,(struct node*)magic_num);
-		       printf("%p\n",curr_ptr);
+		       //printf("%p\n",curr_ptr);
                        return_ptr = get_ptr_to_return(curr_ptr);
            }
 
@@ -222,9 +222,7 @@ void my_free(void* ptr) {
     while(next_ptr!=NULL){
 		if(ptr<next_ptr){// check if the type of the pointer matter while doing pointer comparison 
 			break;
-		}else{
-			continue;
-               }
+		}
 	       prev_ptr = next_ptr;
 	       next_ptr = (void*) (((struct node*)next_ptr)->next);
     }
