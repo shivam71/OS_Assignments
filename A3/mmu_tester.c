@@ -13,8 +13,8 @@ int main(){
      printf("%d\n",arr[1024]);
      */
     
-    char *str = my_malloc(512);
-    char *str2 = my_malloc(512);
+    char *str = malloc(512);
+    char *str2 = malloc(512);
 
     if(str == NULL || str2 == NULL)
     {
@@ -29,10 +29,10 @@ int main(){
     else
       printf("Hello, world! test passed\n");
     
-    my_free(str);
-    my_free(str2);
+    free(str);
+    free(str2);
     printf("Elementary tests passed\n");
-    //printf("%c", str[2]);
+    printf("_%c_\n", str[2]);
     
     /*
     Comprehensive tests:
