@@ -17,6 +17,7 @@ int len_ls = 0;// Check that whenever we modify the free list that we change the
 int num_alloc_blocks = 0;
 size_t magic_num = 12345;// check this
 size_t header_size = sizeof(struct node);
+bool non_contiguous = false;
 
 void initialize(){
 	heap_size = 16384;//bytes
@@ -83,14 +84,22 @@ void delete_node(struct node* prev_ptr,struct node* curr_ptr){
 
 
 struct node* expand_heap(size_t block_size){
+	
 	struct node* new_block_ptr;
-	//printf("current break %p",sbrk(0));
         new_block_ptr= (struct node*)mmap ( NULL, block_size,
         PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
+	void* temp1 = (void*) new_block_ptr;
+	void* temp2 = (void*) heap_end_ptr;
+	temp2+=1;
+	if(non_contiguous==false){
+		if(temp1==temp2){
+			heap_end_ptr+=block_size;
+		}else{	
+			non_contiguous = true;
+		}
+	}
 	heap_size+=block_size;
-//	end_vir_addr+=(block_size);//check once
-        update_header(new_block_ptr,block_size,NULL);
-	//heap_end_ptr+=block_size;
+        update_header(new_block_ptr,(block_size-header_size),NULL);
 	len_ls+=1;
 	return new_block_ptr;
 
@@ -245,6 +254,7 @@ void* my_realloc(void* ptr,size_t size){
 }
 
 void debug(){
+	if(non_contiguous==false){
 	printf("Start addr of the heap %p\n",heap_start_ptr);
 	printf("End addr of the heap %p\n",heap_end_ptr);
 	printf("Addr of the free list head %p\n",head_ls);
@@ -258,7 +268,6 @@ void debug(){
 		ptr_raw = (prev_block_ptr)+(prev_block_size+header_size);
 		ptr_node = (struct node*)ptr_raw;
 		printf("block index = %d , size = %d , addr = %p , ",idx,ptr_node->size,ptr_raw);
-		printf("%p %p",ptr_node->next,magic_num);
 		if((ptr_node->next)==(struct node*)magic_num){
 			printf("status = Allocated\n");
 		}else{
@@ -267,9 +276,18 @@ void debug(){
 		prev_block_ptr = ptr_raw;
 		prev_block_size = ptr_node->size;
         }
-	struct node* curr_ptr = head_ls;
-	while(curr_ptr!=NULL){
-		printf("addr = %p , size = %d , next = %p\n",curr_ptr,curr_ptr->size,curr_ptr->next);
-		curr_ptr=curr_ptr->next;
+	}else{
+		struct node* curr_ptr = head_ls;
+		printf("Length of the free list %d\n",len_ls);
+        	printf("Number of allocated blocks %d\n",num_alloc_blocks);
+		printf("Printing free list\n");
+		int idx = 0;
+		while(curr_ptr!=NULL){
+			printf("block_idx = %d ,addr = %p , size = %d , next = %p\n",idx,curr_ptr,curr_ptr->size,curr_ptr->next);
+			curr_ptr=curr_ptr->next;
+			idx+=1;
+		}
 	}
+	printf("\n\n");
+
 }

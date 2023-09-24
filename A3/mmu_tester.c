@@ -189,5 +189,6 @@ int main(){
     debug();
     my_free(arr);
     debug();
+    printf("Test case 8 Expanding the heap\n");
     return 0;
 }
