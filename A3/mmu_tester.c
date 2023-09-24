@@ -2,7 +2,7 @@
 #include<stdlib.h>
 #include <string.h>
 #include<sys/mman.h>
-#include "my_mmu.h"
+#include "mmu.h"
 
 int main(){
     /*
@@ -13,9 +13,10 @@ int main(){
      printf("%d\n",arr[1024]);
      */
     
-    char *str = malloc(512);
-    char *str2 = malloc(512);
-
+    char *str = my_malloc(512);
+    debug();
+    char *str2 = my_malloc(512);
+    debug();
     if(str == NULL || str2 == NULL)
     {
         printf("alloc failed\n");
@@ -29,8 +30,10 @@ int main(){
     else
       printf("Hello, world! test passed\n");
     
-    free(str);
-    free(str2);
+    my_free(str);
+    debug();
+    my_free(str2);
+    debug();
     printf("Elementary tests passed\n");
     printf("_%c_\n", str[2]);
     
@@ -57,9 +60,13 @@ int main(){
     stringA[1023] = stringB[1023] = stringC[1023] = stringD[1023] = stringX[1023] = '\0';
 
     char *strA = my_malloc(1024);
+    debug();
     char *strB = my_malloc(1024);
+    debug();
     char *strC = my_malloc(1024);
+    debug();
     char *strD = my_malloc(1024);
+    debug();
 
     for(int i = 0; i < 1023; i++)
     {
@@ -78,8 +85,9 @@ int main(){
     /**** test 2 ****/
     
     my_free(strC);
-
+    debug();
     char *strX = my_malloc(1024);
+    debug();
     for(int i = 0; i < 1023; i++)
     {
         strX[i] = 'x';
@@ -102,10 +110,11 @@ int main(){
     stringY[511] = stringZ[511] = '\0';
 
     my_free(strB);
-
+    debug();
     char *strY = my_malloc(512);
+    debug();
     char *strZ = my_malloc(512);
-    
+    debug();
     for(int i = 0; i < 511; i++)
     {
         strY[i] = 'y';
@@ -123,8 +132,11 @@ int main(){
     //test 4: free 2x512, allocate 1024
     
     my_free(strZ);
+    debug();
     my_free(strY);
+    debug();
     strY=my_malloc(1024);
+    debug();
     for(int i = 0; i < 1023; i++)
     {
         strY[i] = 'x';
@@ -139,8 +151,11 @@ int main(){
     //test 5: free 2x1024, allocate 2048
     
     my_free(strX);
+    debug();
     my_free(strY);
+    debug();
     strX= my_malloc(2048);
+    debug();
     char  stringM[2048];
     for (int i=0;i<2047;i++){
         strX[i]=stringM[i]='z';
@@ -151,6 +166,28 @@ int main(){
     else
         printf("Test5 failed\n");
     ///////////////////////////
-
+    debug();
+    my_free(strX);
+    debug();
+    my_free(strA);
+    debug();
+    my_free(strD);
+    debug();
+    printf("Test6 Calloc\n");
+    int* arr = my_calloc(10,4);
+    for(int idx=0;idx<10;idx++){
+	printf("%d\n",arr[idx]);
+	arr[idx]=idx;
+    }
+    debug();
+    printf("Test 7 Realloc\n");
+    arr = my_realloc(arr,80);
+    for(int idx=0;idx<20;idx++){
+        printf("%d\n",arr[idx]);
+        arr[idx]=idx;
+    }
+    debug();
+    my_free(arr);
+    debug();
     return 0;
 }

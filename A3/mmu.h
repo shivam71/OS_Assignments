@@ -5,9 +5,6 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-// Include your Headers below
-
-// You are not allowed to use the function malloc and calloc directly .
 struct node{
 	size_t size;
 	struct node* next;
@@ -22,7 +19,7 @@ size_t magic_num = 12345;// check this
 size_t header_size = sizeof(struct node);
 
 void initialize(){
-	heap_size = 4096;//bytes
+	heap_size = 16384;//bytes
 	head_ls = (struct node*)mmap ( NULL, heap_size,
         PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
 	head_ls->size=heap_size-header_size;
@@ -32,9 +29,6 @@ void initialize(){
 	heap_end_ptr+=heap_size;
 	// one more than the end of the heap (??) check 
 	heap_end_ptr-=1;
-	int succ = brk(heap_end_ptr+1);
-	//printf("%d\n",succ);
-	//printf("%p\n",sbrk(0));
 	len_ls=1;
 	
 	//Always maintain non empty free list
@@ -91,11 +85,12 @@ void delete_node(struct node* prev_ptr,struct node* curr_ptr){
 struct node* expand_heap(size_t block_size){
 	struct node* new_block_ptr;
 	//printf("current break %p",sbrk(0));
-        new_block_ptr= sbrk((int)block_size);
+        new_block_ptr= (struct node*)mmap ( NULL, block_size,
+        PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
 	heap_size+=block_size;
 //	end_vir_addr+=(block_size);//check once
         update_header(new_block_ptr,block_size,NULL);
-	heap_end_ptr+=block_size;
+	//heap_end_ptr+=block_size;
 	len_ls+=1;
 	return new_block_ptr;
 
@@ -103,10 +98,10 @@ struct node* expand_heap(size_t block_size){
 
 bool do_coalesce(struct node* prev,struct node* next){
 	size_t prev_size = prev->size;
-	prev = (void*) prev;
-	next = (void*) next;
-	prev+=(header_size+prev_size);
-	return (prev==next);
+	void* temp1  = (void*)prev;
+	void* temp2 = (void*) next;
+	temp1+=(prev_size+header_size);
+	return (temp1==temp2);
 }
 
 void coalesce(struct node* prev,struct node* next){
@@ -239,7 +234,7 @@ void my_free(void* ptr) {
     }
 }
 
-void* realloc(void* ptr,size_t size){
+void* my_realloc(void* ptr,size_t size){
 	unsigned char* ptr_return = my_malloc(size);// copy bytes using unsigned char vs char test by storing negative numbers array and explore
 	unsigned char* ptr_given =  (unsigned char*) ptr;
 	for(int idx = 0;idx<size;idx++){
@@ -272,4 +267,9 @@ void debug(){
 		prev_block_ptr = ptr_raw;
 		prev_block_size = ptr_node->size;
         }
+	struct node* curr_ptr = head_ls;
+	while(curr_ptr!=NULL){
+		printf("addr = %p , size = %d , next = %p\n",curr_ptr,curr_ptr->size,curr_ptr->next);
+		curr_ptr=curr_ptr->next;
+	}
 }
