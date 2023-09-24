@@ -223,6 +223,14 @@ void my_free(void* ptr) {
     void*  next_ptr = head_ls;
     void*  prev_ptr = NULL;
     ptr = get_header_ptr(ptr);
+    struct node* node_ptr = (struct node*) ptr;
+    struct node* magic_ptr = (struct node*) magic_num;
+    if(node_ptr->next!=magic_ptr){
+    	printf("Error cannot free a block not allocated by my_malloc\n");
+	return;
+     } 
+
+
     while(next_ptr!=NULL){
 		if(ptr<next_ptr){// check if the type of the pointer matter while doing pointer comparison 
 			break;
