@@ -1,9 +1,9 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-//#include<semaphore.h>
+#include<semaphore.h>
 #include<unistd.h>
-//#include<pthread.h>
+#include<pthread.h>
 #include<stdbool.h>
 
 FILE* fp;
@@ -14,8 +14,9 @@ struct avl_node
     int data;
     struct avl_node *left;
     struct avl_node *right;
+    struct avl_node *parent;
     int height;
-    //pthread_mutex_t* node_lk;
+    pthread_mutex_t* node_lk;
 };
 typedef struct avl_node avl_node;
 
@@ -25,6 +26,7 @@ avl_node *newNode(int x)
     node->data = x;
     node->left = NULL;
     node->right = NULL;
+    node->parent = NULL;
     node->height = 1;
     return node;
 }
@@ -112,11 +114,11 @@ avl_node* balanceNode(avl_node* node, int x)
     return node;
 }
 
-avl_node* minValueNode(avl_node* node)
+avl_node* in_successor(avl_node* node)
 {
-    avl_node* current = node;
-    while (current->left != NULL) current = current->left;
-    return current;
+    avl_node* temp = node;
+    while (temp->left != NULL) temp = temp->left;
+    return temp;
 }
 
 
@@ -155,7 +157,7 @@ avl_node* insert_node(avl_node* node, int x)
 
 avl_node* delete_node(avl_node* node, int x)
 {
-    printf("DELETE %d\n", node->data);
+    //printf("DELETE %d\n", node->data);
     num_nodes -= 1;
     if(node == NULL) return node;
     
@@ -165,28 +167,27 @@ avl_node* delete_node(avl_node* node, int x)
         node->right = delete_node(node->right, x);
     else
     {
+        avl_node* temp;
+        if(node->left == NULL && node->right == NULL)
+        {
+            node = NULL;
+            return node;
+        }
         if(node->left == NULL || node->right == NULL)
         {
-            avl_node* temp = node->left ? node->left : node->right;
-            if(temp == NULL)
-            {
-                temp = node;
-                node = NULL;
-            }
-            else
-            {
-                *node = *temp;
-            }
+            if(node->left == NULL) temp = node->right;
+            else if(node->right == NULL) temp = node->left;
+            *node = *temp;
             free(temp);
         }
         else
         {
-            avl_node* temp = minValueNode(node->right);
+            temp = in_successor(node->right);
             node->data = temp->data;
             node->right = delete_node(node->right, temp->data);
         }
     }
-    if(node == NULL) return node;
+    
     node->height = 1 + max(getHeight(node->left), getHeight(node->right));
     if(checkBalance(node)) return node;
     return balanceNode(node, x);
