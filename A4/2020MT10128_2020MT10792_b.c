@@ -100,11 +100,23 @@ avl_node* DoubleRightLeftRotation(avl_node* node)
 avl_node* balanceNode(avl_node* node, int x)
 {
     int balance = getBalance(node);
-    if(balance > 1 && x < node->left->data) return SingleRightRotation(node);
-    if(balance < -1 && x > node->right->data) return SingleLeftRotation(node);
-    if(balance > 1 && x > node->left->data) return DoubleLeftRightRotation(node);
-    if (balance < -1 && x < node->right->data) return DoubleRightLeftRotation(node);
+    //printf("%d %d %d\n", x, balance, getBalance(node->left));
+    if(balance > 1 && getBalance(node->left) >= 0)
+        return SingleRightRotation(node);
+    if(balance < -1 && getBalance(node->right) <= 0)
+        return SingleLeftRotation(node);
+    if(balance > 1 && getBalance(node->left) < 0)
+        return DoubleLeftRightRotation(node);
+    if (balance < -1 && getBalance(node->right) > 0)
+        return DoubleRightLeftRotation(node);
     return node;
+}
+
+avl_node* minValueNode(avl_node* node)
+{
+    avl_node* current = node;
+    while (current->left != NULL) current = current->left;
+    return current;
 }
 
 
@@ -131,8 +143,10 @@ avl_node* insert_node(avl_node* node, int x)
     num_nodes += 1;
     if(node == NULL) return newNode(x);
     
-    if(x < node->data) node->left = insert_node(node->left, x);
-    else if(x > node->data) node->right = insert_node(node->right, x);
+    if(x < node->data)
+        node->left = insert_node(node->left, x);
+    else if(x > node->data)
+        node->right = insert_node(node->right, x);
     
     node->height = 1 + max(getHeight(node->left), getHeight(node->right));
     if(checkBalance(node)) return node;
@@ -141,46 +155,41 @@ avl_node* insert_node(avl_node* node, int x)
 
 avl_node* delete_node(avl_node* node, int x)
 {
-    //printf("DELETE %d\n", x);
-    /*
+    printf("DELETE %d\n", node->data);
     num_nodes -= 1;
     if(node == NULL) return node;
     
-    if(x < node->data) node->left = delete_node(node->left, x);
-    else if(x > node->data) node->right = delete_node(node->right, x);
+    if(x < node->data)
+        node->left = delete_node(node->left, x);
+    else if(x > node->data)
+        node->right = delete_node(node->right, x);
     else
     {
         if(node->left == NULL || node->right == NULL)
         {
-            if(node->left == NULL && node->right == NULL)
+            avl_node* temp = node->left ? node->left : node->right;
+            if(temp == NULL)
             {
-                free(node);
-                return NULL;
+                temp = node;
+                node = NULL;
             }
-            if(node->left == NULL)
+            else
             {
-                avl_node* temp = node->right;
-                *node = *temp;
-            }
-            else if(node->right == NULL)
-            {
-                avl_node* temp = node->left;
                 *node = *temp;
             }
             free(temp);
         }
         else
         {
-            
+            avl_node* temp = minValueNode(node->right);
+            node->data = temp->data;
+            node->right = delete_node(node->right, temp->data);
         }
     }
-    
+    if(node == NULL) return node;
     node->height = 1 + max(getHeight(node->left), getHeight(node->right));
-    
     if(checkBalance(node)) return node;
-    return balanceNode(node);
-    */
-    return node;
+    return balanceNode(node, x);
 }
 
 bool contains_node(avl_node* node, int x)
@@ -218,7 +227,7 @@ int main(int argc, char* argv[])
         {
             word = strtok(NULL,"\n");
             int x = strtod(strdup(word), &ptr);
-            delete_node(root, x);
+            root = delete_node(root, x);
         }
         else if(strcmp("contains", word) == 0)
         {
@@ -232,11 +241,13 @@ int main(int argc, char* argv[])
         {
             word = strtok(NULL,"\n");
             in_order_traversal(root);
+            printf("\n");
         }
         else if(strcmp("pre", word) == 0)
         {
             word = strtok(NULL,"\n");
             pre_order_traversal(root);
+            printf("\n");
         }
     }
     fclose(fp);
