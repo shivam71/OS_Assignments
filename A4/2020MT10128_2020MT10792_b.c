@@ -1,10 +1,12 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<semaphore.h>
+//#include<semaphore.h>
 #include<unistd.h>
-#include<pthread.h>
+//#include<pthread.h>
 #include<stdbool.h>
+
+FILE* fp;
 
 //GLOBALS
 struct avl_node
@@ -12,9 +14,8 @@ struct avl_node
     int data;
     struct avl_node *left;
     struct avl_node *right;
-    struct avl_node *parent;
     int height;
-    pthread_mutex_t* node_lk;
+    //pthread_mutex_t* node_lk;
 };
 typedef struct avl_node avl_node;
 
@@ -24,13 +25,11 @@ avl_node *newNode(int x)
     node->data = x;
     node->left = NULL;
     node->right = NULL;
-    node->parent = NULL;
     node->height = 1;
     return node;
 }
 
 avl_node* root;
-FILE* fp;
 int num_nodes;
 int max(int a, int b){ return (a > b ? a : b);}
 
@@ -54,15 +53,6 @@ bool checkBalance(avl_node* node)
 //ROTATIONS
 avl_node* SingleLeftRotation(avl_node* node)
 {
-    /*
-      z                                y
-     /  \                            /   \
-    T1   y     Left Rotate(z)       z      x
-        /  \   - - - - - - - ->    / \    / \
-       T2   x                     T1  T2 T3  T4
-           / \
-         T3  T4
-     */
     avl_node* y = node->right;
     avl_node* T2 = y->left;
     
@@ -70,29 +60,14 @@ avl_node* SingleLeftRotation(avl_node* node)
     y->left = node;
     node->right = T2;
     
-    //update parent
-    avl_node* par = node->parent;
-    node->parent = y;
-    y->parent = par;
-    T2->parent = node;
-    
     //update height
     node->height = max(getHeight(node->left), getHeight(node->right)) + 1;
-    y->height = max(node->height, getHeight(y->right)) + 1;
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
     return y;
 }
 
 avl_node* SingleRightRotation(avl_node* node)
 {
-    /*
-             z                                      y
-            / \                                   /   \
-           y   T4      Right Rotate (z)          x      z
-          / \          - - - - - - - - ->      /  \    /  \
-         x   T3                               T1  T2  T3  T4
-        / \
-      T1   T2
-     */
     avl_node* y = node->left;
     avl_node* T3 = y->right;
     
@@ -100,29 +75,14 @@ avl_node* SingleRightRotation(avl_node* node)
     y->right = node;
     node->left = T3;
     
-    //update parent
-    avl_node* par = node->parent;
-    node->parent = y;
-    y->parent = par;
-    T3->parent = node;
-    
     //update height
     node->height = max(getHeight(node->left), getHeight(node->right)) + 1;
-    y->height = max(node->height, getHeight(y->left)) + 1;
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
     return y;
 }
 
 avl_node* DoubleLeftRightRotation(avl_node* node)
 {
-        /*
-         z                               z                           x
-        / \                            /   \                        /  \
-       y   T4  Left Rotate (y)        x    T4  Right Rotate(z)    y      z
-      / \      - - - - - - - - ->    /  \      - - - - - - - ->  / \    / \
-    T1   x                          y    T3                    T1  T2 T3  T4
-        / \                        / \
-      T2   T3                    T1   T2
-         */
     avl_node* x = SingleLeftRotation(node->left);
     node->left = x;
     x = SingleRightRotation(node);
@@ -131,19 +91,20 @@ avl_node* DoubleLeftRightRotation(avl_node* node)
 
 avl_node* DoubleRightLeftRotation(avl_node* node)
 {
-    /*
-         z                            z                            x
-        / \                          / \                          /  \
-      T1   y   Right Rotate (y)    T1   x      Left Rotate(z)   z      y
-          / \  - - - - - - - - ->     /  \   - - - - - - - ->  / \    / \
-         x   T4                      T2   y                  T1  T2  T3  T4
-        / \                              /  \
-      T2   T3                           T3   T4
-     */
     avl_node* x = SingleRightRotation(node->right);
     node->right = x;
     x = SingleLeftRotation(node);
     return x;
+}
+
+avl_node* balanceNode(avl_node* node, int x)
+{
+    int balance = getBalance(node);
+    if(balance > 1 && x < node->left->data) return SingleRightRotation(node);
+    if(balance < -1 && x > node->right->data) return SingleLeftRotation(node);
+    if(balance > 1 && x > node->left->data) return DoubleLeftRightRotation(node);
+    if (balance < -1 && x < node->right->data) return DoubleRightLeftRotation(node);
+    return node;
 }
 
 
@@ -166,7 +127,7 @@ void in_order_traversal(avl_node* node)
 
 avl_node* insert_node(avl_node* node, int x)
 {
-    printf("INSERT %d\n", x);
+    //printf("INSERT_%d\n", x);
     num_nodes += 1;
     if(node == NULL) return newNode(x);
     
@@ -174,38 +135,57 @@ avl_node* insert_node(avl_node* node, int x)
     else if(x > node->data) node->right = insert_node(node->right, x);
     
     node->height = 1 + max(getHeight(node->left), getHeight(node->right));
-    
     if(checkBalance(node)) return node;
-    
-    int balance = getBalance(node);
-    if(balance > 1 && x < node->left->data)
-    {
-        return SingleRightRotation(node);
-    }
-    if(balance < -1 && x > node->right->data)
-    {
-        return SingleLeftRotation(node);
-    }
-    if(balance > 1 && x > node->left->data)
-    {
-        return DoubleLeftRightRotation(node);
-    }
-    if (balance < -1 && x < node->right->data)
-    {
-        return DoubleRightLeftRotation(node);
-    }
-    return node;
+    return balanceNode(node, x);
 }
 
 avl_node* delete_node(avl_node* node, int x)
 {
-    printf("DELETE %d\n", x);
+    //printf("DELETE %d\n", x);
+    /*
+    num_nodes -= 1;
+    if(node == NULL) return node;
+    
+    if(x < node->data) node->left = delete_node(node->left, x);
+    else if(x > node->data) node->right = delete_node(node->right, x);
+    else
+    {
+        if(node->left == NULL || node->right == NULL)
+        {
+            if(node->left == NULL && node->right == NULL)
+            {
+                free(node);
+                return NULL;
+            }
+            if(node->left == NULL)
+            {
+                avl_node* temp = node->right;
+                *node = *temp;
+            }
+            else if(node->right == NULL)
+            {
+                avl_node* temp = node->left;
+                *node = *temp;
+            }
+            free(temp);
+        }
+        else
+        {
+            
+        }
+    }
+    
+    node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+    
+    if(checkBalance(node)) return node;
+    return balanceNode(node);
+    */
     return node;
 }
 
 bool contains_node(avl_node* node, int x)
 {
-    printf("CHECK %d\n", x);
+    //printf("CHECK %d\n", x);
     if(node == NULL) return false;
     if(x == node->data) return true;
     if(x < node->data) return contains_node(node->left, x);
