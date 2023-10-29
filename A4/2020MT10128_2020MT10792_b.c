@@ -1,73 +1,250 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<semaphore.h>
+//#include<semaphore.h>
 #include<unistd.h>
-#include<pthread.h>
+//#include<pthread.h>
 #include<stdbool.h>
 
+FILE* fp;
 
-// Custom data types
+//GLOBALS
+struct avl_node
+{
+    int data;
+    struct avl_node *left;
+    struct avl_node *right;
+    int height;
+    //pthread_mutex_t* node_lk;
+};
+typedef struct avl_node avl_node;
 
-typedef _node{
-	int val;
-	int height;
-	t_node* left;
-	t_node* right;
-	pthread_mutex_t* node_lk;
-} t_node;
-
-
-
-// Global variables
- 
-char* user_input;
-char** parsed_input;
-t_node* root_ptr;
-// Helper functions 
-
-void init_gl_vars(){
-	parsed_input = malloc(2*sizeof(char*));
+avl_node *newNode(int x)
+{
+    avl_node *node = malloc(sizeof(avl_node)*1);
+    node->data = x;
+    node->left = NULL;
+    node->right = NULL;
+    node->height = 1;
+    return node;
 }
 
-void allocate_mem_input(){
-	user_input = malloc(2048*sizeof(char));
+avl_node* root;
+int num_nodes;
+int max(int a, int b){ return (a > b ? a : b);}
+
+//HELPERS
+int getHeight(avl_node* node)
+{
+    if(node == NULL) return 0;
+    return node->height;
+}
+int getBalance(avl_node* node)
+{
+    return getHeight(node->left) - getHeight(node->right);
+}
+bool checkBalance(avl_node* node)
+{
+    int x = getBalance(node);
+    if(x == 0 || x == 1 || x == -1) return true;
+    return false;
+}
+
+//ROTATIONS
+avl_node* SingleLeftRotation(avl_node* node)
+{
+    avl_node* y = node->right;
+    avl_node* T2 = y->left;
+    
+    //update left, right
+    y->left = node;
+    node->right = T2;
+    
+    //update height
+    node->height = max(getHeight(node->left), getHeight(node->right)) + 1;
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+    return y;
+}
+
+avl_node* SingleRightRotation(avl_node* node)
+{
+    avl_node* y = node->left;
+    avl_node* T3 = y->right;
+    
+    //update left, right
+    y->right = node;
+    node->left = T3;
+    
+    //update height
+    node->height = max(getHeight(node->left), getHeight(node->right)) + 1;
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+    return y;
+}
+
+avl_node* DoubleLeftRightRotation(avl_node* node)
+{
+    avl_node* x = SingleLeftRotation(node->left);
+    node->left = x;
+    x = SingleRightRotation(node);
+    return x;
+}
+
+avl_node* DoubleRightLeftRotation(avl_node* node)
+{
+    avl_node* x = SingleRightRotation(node->right);
+    node->right = x;
+    x = SingleLeftRotation(node);
+    return x;
+}
+
+avl_node* balanceNode(avl_node* node, int x)
+{
+    int balance = getBalance(node);
+    if(balance > 1 && x < node->left->data) return SingleRightRotation(node);
+    if(balance < -1 && x > node->right->data) return SingleLeftRotation(node);
+    if(balance > 1 && x > node->left->data) return DoubleLeftRightRotation(node);
+    if (balance < -1 && x < node->right->data) return DoubleRightLeftRotation(node);
+    return node;
 }
 
 
-
-
-
-
-
-
-void parse_input(){
-	int num_tokens = 0;
-	char* user_input_copy = strdup(user_input);
-	char* token = strtok(user_input_copy," ");
-	while(token!=NULL){
-		num_tokens++;
-		parsed_input[num_tokens-1]= strdup(token);
-		token = strtok(NULL," ");
-	}
-	while(num_tokens<2){
-		num_tokens++;
-		parsed_input[num_tokens-1] = NULL;
-	}
-	/*for(int i = 0;i<2;i++){
-                printf("%s\n",parsed_input[i]);
-        }*/
+//FUNCTIONS
+void pre_order_traversal(avl_node* node)
+{
+    if(node == NULL) return;
+    printf("%d ", node->data);
+    pre_order_traversal(node->left);
+    pre_order_traversal(node->right);
 }
 
+void in_order_traversal(avl_node* node)
+{
+    if(node == NULL) return;
+    in_order_traversal(node->left);
+    printf("%d ", node->data);
+    in_order_traversal(node->right);
+}
 
+avl_node* insert_node(avl_node* node, int x)
+{
+    //printf("INSERT_%d\n", x);
+    num_nodes += 1;
+    if(node == NULL) return newNode(x);
+    
+    if(x < node->data) node->left = insert_node(node->left, x);
+    else if(x > node->data) node->right = insert_node(node->right, x);
+    
+    node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+    if(checkBalance(node)) return node;
+    return balanceNode(node, x);
+}
 
-int main(){
-    init_gl_vars();
-    allocate_mem_input();
-    while(gets(user_input)){
-	user_input[strcspn(user_input,"\n")] = '\0';
-	parse_input();
-	printf("%s\n",parsed_input[0]);
-	allocate_mem_input();
+avl_node* delete_node(avl_node* node, int x)
+{
+    //printf("DELETE %d\n", x);
+    /*
+    num_nodes -= 1;
+    if(node == NULL) return node;
+    
+    if(x < node->data) node->left = delete_node(node->left, x);
+    else if(x > node->data) node->right = delete_node(node->right, x);
+    else
+    {
+        if(node->left == NULL || node->right == NULL)
+        {
+            if(node->left == NULL && node->right == NULL)
+            {
+                free(node);
+                return NULL;
+            }
+            if(node->left == NULL)
+            {
+                avl_node* temp = node->right;
+                *node = *temp;
+            }
+            else if(node->right == NULL)
+            {
+                avl_node* temp = node->left;
+                *node = *temp;
+            }
+            free(temp);
+        }
+        else
+        {
+            
+        }
     }
+    
+    node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+    
+    if(checkBalance(node)) return node;
+    return balanceNode(node);
+    */
+    return node;
+}
+
+bool contains_node(avl_node* node, int x)
+{
+    //printf("CHECK %d\n", x);
+    if(node == NULL) return false;
+    if(x == node->data) return true;
+    if(x < node->data) return contains_node(node->left, x);
+    return contains_node(node->right, x);
+}
+
+int main(int argc, char* argv[])
+{
+    root = NULL;
+    num_nodes = 0;
+    fp = fopen(argv[1], "r");
+    if(NULL == fp){
+        printf("File can't be opened\n");
+        return 1;
+    }
+    // reading line by line, max 256 bytes
+    const unsigned MAX_LENGTH = 256;
+    char buffer[MAX_LENGTH];
+    while (fgets(buffer, MAX_LENGTH, fp)){
+        //tokenise buffer
+        char* ptr;
+        char *word = strtok(strdup(buffer)," ");
+        if(strcmp("insert", word) == 0)
+        {
+            word = strtok(NULL,"\n");
+            int x = strtod(strdup(word), &ptr);
+            root = insert_node(root, x);
+        }
+        else if(strcmp("delete", word) == 0)
+        {
+            word = strtok(NULL,"\n");
+            int x = strtod(strdup(word), &ptr);
+            delete_node(root, x);
+        }
+        else if(strcmp("contains", word) == 0)
+        {
+            word = strtok(NULL,"\n");
+            int x = strtod(strdup(word), &ptr);
+            
+            if(contains_node(root, x)) printf("YES\n");
+            else printf("NO\n");
+        }
+        else if(strcmp("in", word) == 0)
+        {
+            word = strtok(NULL,"\n");
+            in_order_traversal(root);
+        }
+        else if(strcmp("pre", word) == 0)
+        {
+            word = strtok(NULL,"\n");
+            pre_order_traversal(root);
+        }
+    }
+    fclose(fp);
+    
+    /*
+    FILE* fp = fopen(argv[2], "w");
+    fclose(fp);
+    */
+    
+    return 0;
 }
