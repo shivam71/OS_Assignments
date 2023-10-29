@@ -60,7 +60,7 @@ void init_gl_vars(){
 
 void expand_threads_arr(){
 	threads_arr = realloc(threads_arr,2*threads_arr_cap*sizeof(pthread_t));
-	threads_arr_cap = pthreads_arr_cap*2;
+	threads_arr_cap = threads_arr_cap*2;
 }
 
 int get_total_readers(){
@@ -76,13 +76,13 @@ void allocate_mem_input(){
 }
 
 void readlock(rw_file_lk* rw_lock){
-	sem_wait(&(rw_lock->reading_poss))
-	sem_wait(&(rw_lock->rlock))
+	sem_wait(&(rw_lock->reading_poss));
+	sem_wait(&(rw_lock->rlock));
 		if(rw_lock->reader_count==0){
 			sem_wait(&(rw_lock->writing_poss));// if the first reader has to wait then subsequent readers cannot acquire the rlock
 		}
 	rw_lock->reader_count++;
-	sem_post(&(rw_lock->rlock))
+	sem_post(&(rw_lock->rlock));
 	pthread_mutex_lock(&total_rw_info_lock);
 	readers_with_lk++;
 	pthread_mutex_unlock(&total_rw_info_lock);
@@ -92,7 +92,7 @@ void readlock(rw_file_lk* rw_lock){
 void readunlock(rw_file_lk* rw_lock){
 	sem_wait(&(rw_lock->rlock));
 	rw_lock->reader_count--;
-	if(rw_lock->reader_count==0) sem_post(rw_lock->writing_poss);
+	if(rw_lock->reader_count==0) sem_post(&(rw_lock->writing_poss));
 	pthread_mutex_lock(&total_rw_info_lock);
         readers_with_lk--;
         pthread_mutex_unlock(&total_rw_info_lock);
@@ -101,20 +101,22 @@ void readunlock(rw_file_lk* rw_lock){
 
 void writelock(rw_file_lk* rw_lock){
 	sem_wait(&(rw_lock->wlock));
-	if(rw_lock->writer_count==0) sem_wait(rw_lock->reading_poss);
+	if(rw_lock->writer_count==0) sem_wait(&(rw_lock->reading_poss));
 	rw_lock->writer_count++;// doesn't actually have the lock	
 	sem_post(&(rw_lock->wlock));
 	sem_wait(&(rw_lock->writing_poss));
+	pthread_mutex_lock(&total_rw_info_lock);
+        writers_with_lk++;
+        pthread_mutex_unlock(&total_rw_info_lock);
 
 }
 void writeunlock(rw_file_lk* rw_lock){
 	sem_wait(&(rw_lock->wlock));
         rw_lock->writer_count--;
         if(rw_lock->writer_count==0){
-		sem_post(rw_lock->reading_poss);
-	}else{
-		sem_post(rw_lock->writing_poss);
+		sem_post(&(rw_lock->reading_poss));
 	}
+	sem_post(&(rw_lock->writing_poss));
         pthread_mutex_lock(&total_rw_info_lock);
         writers_with_lk--;
         pthread_mutex_unlock(&total_rw_info_lock);
@@ -122,27 +124,57 @@ void writeunlock(rw_file_lk* rw_lock){
 }
 
 
-int read_file(char* string_read,FILE* file_ptr){
+int read_file(char** string_read,FILE* file_ptr){
 	int bytes_read = 0;
 	int cap = 100;
-	string_read = malloc(cap*sizeof(char));
-	char c = fgetc(file_ptr);
+	//printf("Reading a file\n");
+	string_read[0] = malloc(cap*sizeof(char));
+	int c = fgetc(file_ptr);
 	while(c!=EOF){
 		bytes_read++;
 		if(bytes_read==cap){
 			cap*=2;
-			string_read = realloc(string_read,cap*sizeof(char));
+			string_read[0] = realloc(string_read[0],cap*sizeof(char));
 		}
-		*string_read[bytes_read-1] = c;
+		string_read[0][bytes_read-1] = (char)c;
+		c = fgetc(file_ptr);
 	}
-	string_read[bytes_read] = '\0';
+	string_read[0][bytes_read] = '\0';
+	//printf("Reading complete\n");
 	return bytes_read;
 }
 
+char* read_file1(FILE* file_ptr){
+        int bytes_read = 0;
+        int cap = 10000;
+        char* string_read = malloc(cap*sizeof(char));
+        int c = fgetc(file_ptr);
+        while(c!=EOF){
+                bytes_read++;
+                if(bytes_read==cap){
+                        cap=2*cap;
+                        string_read = realloc(string_read,cap*sizeof(char));
+                }
+                string_read[bytes_read-1] = (char)c;
+                c = fgetc(file_ptr);
+        }
+        string_read[bytes_read] = '\0';
+        printf("Reading complete\n");
+        return string_read;
+}
+
+
+
 int write_file(char* string_write,FILE* file_ptr){
-	int bytes_written = 0;
+	int bytes_written = 0;// include the one byte corresponding to '\n'
 	// add a new line
-	fputc("\n",file_ptr);
+	long f_ptr_pos = ftell(file_ptr);
+	printf("%ld file pointer pos",f_ptr_pos);
+	if(f_ptr_pos!=((long)0)){
+		printf("Printing new line");
+		bytes_written++;
+	fputc('\n',file_ptr);// What if the file is empty ?
+	}
 	char c = *string_write;
 	while(c!='\0'){
 		bytes_written++;
@@ -152,41 +184,49 @@ int write_file(char* string_write,FILE* file_ptr){
 	}
 	return bytes_written;
 }
-void* read(thread_args* args){
+void* read1(thread_args* args){
+	//printf("Here \n");
 	int bytes_read = 0;
-	char* string_read= NULL;
+	char** string_read = malloc(sizeof(char*));
 	readlock(args->flock_1);
+	//printf("Here 1\n");
 	FILE* file_ptr = fopen(args->fname_1,"r");
 	bytes_read = read_file(string_read,file_ptr);
 	fclose(file_ptr);
-	// Why not acquire a lock here to print the number of readers and writers 
+	// Why not acquire a lock here to print the number of readers and writers
+	//printf("About to acquire lock\n");
 	pthread_mutex_lock(&total_rw_info_lock);
        	printf("read %d bytes with %d reader and %d writer present\n",bytes_read,readers_with_lk,writers_with_lk);
         pthread_mutex_unlock(&total_rw_info_lock);
 	readunlock(args->flock_1);
+	return NULL;
 }
 
 
 void* write1(thread_args* args){
-	char* string_read= NULL;
+	//char* string_read= NULL;
+	printf("Before seg 0\n");
 	int bytes_read = 0;
+	char* string_read = NULL;
 	int bytes_written = 0;
 	readlock(args->flock_2);
 	FILE* file_ptr = fopen(args->fname_2,"r");
-        bytes_read = read_file(string_read,file_ptr);
+        string_read = read_file1(file_ptr);
+	printf("Before seg 2\n");
 	fclose(file_ptr);
 	readunlock(args->flock_2); 
-
+	printf("Before seg\n");
 
 
 	writelock(args->flock_1);
-	FILE* file_ptr = fopen(args->fname_1,"a");// check what it returns
+	file_ptr = fopen(args->fname_1,"a");// check what it returns
 	bytes_written = write_file(string_read,file_ptr);
 	fclose(file_ptr);
 	pthread_mutex_lock(&total_rw_info_lock);
         printf("wrote %d bytes with %d reader and %d writer present\n",bytes_written,readers_with_lk,writers_with_lk);
         pthread_mutex_unlock(&total_rw_info_lock);
 	writeunlock(args->flock_1);
+	return NULL;
 }
 
 void* write2(thread_args* args){
@@ -199,6 +239,7 @@ void* write2(thread_args* args){
         printf("wrote %d bytes with %d reader and %d writer present\n",bytes_written,readers_with_lk,writers_with_lk);
         pthread_mutex_unlock(&total_rw_info_lock);
 	writeunlock(args->flock_1);
+	return NULL;
 }
 
 
@@ -209,6 +250,18 @@ void init_lock(rw_file_lk* lock_ptr){
 	sem_init(&(lock_ptr->wlock),0,1);
 	sem_init(&(lock_ptr->reading_poss),0,1);
 	sem_init(&(lock_ptr->writing_poss),0,1);
+}
+
+void remove_trailing_spaces(char* str_org){
+	if(str_org==NULL) return;
+	int pos = strlen(str_org);
+	pos--;	
+	char c  = str_org[pos];	
+	while(c==' '){
+		pos--;
+		c = str_org[pos];
+	}
+	str_org[pos+1] = '\0'; 
 }
 
 rw_file_lk* get_file_lock_ptr(char* fname){
@@ -230,8 +283,8 @@ rw_file_lk* get_file_lock_ptr(char* fname){
 	if(!found){
 		files_arr[files_arr_size].file_name = strdup(fname);
 		files_arr[files_arr_size].file_lock = malloc(sizeof(rw_file_lk));
-		init_lock(files_arr[files_arr_size]);
-		lock_ptr = files_arr[files_arr_size];
+		init_lock(files_arr[files_arr_size].file_lock);
+		lock_ptr = files_arr[files_arr_size].file_lock;
 		files_arr_size++;// assuming we don't need to change the capacity 
 	}
 	return lock_ptr;
@@ -249,18 +302,20 @@ void parse_input(){
 		num_tokens++;
 		if(num_tokens==4){
 			token = strtok(NULL,"\n");
+			// Still a problem with trailing spaces
+			remove_trailing_spaces(token);
 		}else{
 			token = strtok(NULL," ");
 		}
 	
 	}
-	while(num_tokens<4){
-		num_tokens++;
+	/*while(num_tokens<=4){
 		parsed_input[num_tokens-1] = NULL;
+		num_tokens++;
 	}
 	for(int i = 0;i<4;i++){
                 printf("%s\n",parsed_input[i]);
-        }
+        }*/
 }
 
 
@@ -282,6 +337,7 @@ int main(){
     rw_file_lk* f2_lk;
     allocate_mem_input();
     thread_args* args;
+    sleep(10);
     while(gets(user_input)){
 	user_input[strcspn(user_input,"\n")] = '\0';
 	if(strlen(user_input)==0) continue;
@@ -291,27 +347,30 @@ int main(){
 	threads_arr_size++;
 	args = malloc(sizeof(thread_args));
 	if(strcmp(command,"read")==0){
+	//	printf("Here1 \n");
 		fname_1 = parsed_input[1];
-		f1_lk = get_file_lock(fname_1);
+	//	printf("Here2 \n");
+		f1_lk = get_file_lock_ptr(fname_1);
 		args->fname_1 = fname_1;
 		args->flock_1 = f1_lk;
-		pthread_create(threads_arr[threads_arr_size-1],NULL,read,args);
+		pthread_create(&threads_arr[threads_arr_size-1],NULL,read1,args);
 	}else if(strcmp(command,"write")==0){
 		type = parsed_input[1];
 		fname_1 = parsed_input[2];
-		f1_lk = get_file_lock(fname_1);
+		f1_lk = get_file_lock_ptr(fname_1);
 		args->fname_1 = fname_1;
                 args->flock_1 = f1_lk;
 		if(strcmp(type,"1")==0){
-			fname_2 = parsed_input[3];
-			f2_lk = get_file_lock(fname_2);
+			fname_2 = strdup(parsed_input[3]);
+			//printf("%sNOTRAIL",fname_2);
+			f2_lk = get_file_lock_ptr(fname_2);
 			args->fname_2 = fname_2;
                 	args->flock_2 = f2_lk;
-			pthread_create(threads_arr[threads_arr_size-1],NULL,write1,args);
+			pthread_create(&threads_arr[threads_arr_size-1],NULL,write1,args);
 		}else{
 			line = parsed_input[3];
 			args->line = line;
-			pthread_create(threads_arr[threads_arr_size-1],NULL,write2,args);
+			pthread_create(&threads_arr[threads_arr_size-1],NULL,write2,args);
 		}	
 	}else if(strcmp(command,"exit")==0){
 		// wait till all the child threads have completed 
