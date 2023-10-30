@@ -10,7 +10,7 @@ FILE* fp;
 pthread_t* threads_arr;
 int threads_arr_size;
 int threads_arr_cap;
-
+// Need a lock for the root ptr 
 //GLOBALS
 struct avl_node
 {
@@ -19,7 +19,7 @@ struct avl_node
     struct avl_node *right;
     struct avl_node *parent;
     int height;
-    pthread_mutex_t* node_lk;
+    pthread_mutex_t node_lk;
 };
 typedef struct avl_node avl_node;
 
@@ -29,6 +29,13 @@ struct args_{
 	int val;
 } typedef thread_args;
 
+
+
+void wait_all_finish(){
+	for(int i = 0;i<threads_arr_size;i++){
+		pthread_join(threads_arr[i],NULL);
+	}
+}
 
 
 void init_glob_vars(){
@@ -157,6 +164,7 @@ void pre_order_traversal(avl_node* node)
 
 void* thread_pre_order(thread_args* args){
 	pre_order_traversal(args->node);
+	printf("\n");
 }
 
 
@@ -171,6 +179,7 @@ void in_order_traversal(avl_node* node)
 
 void* thread_in_order(thread_args* args){
         in_order_traversal(args->node);
+	printf("\n");
 }
 
 
@@ -191,6 +200,7 @@ avl_node* insert_node(avl_node* node, int x)
 }
 
 void* thread_insert_node(thread_args* args){
+    
     root =  insert_node(args->node,args->val);// root is a shared variable 
 }
 
@@ -245,11 +255,14 @@ bool contains_node(avl_node* node, int x)
 
 void* thread_contains_node(thread_args* args){
     bool found =  contains_node(args->node,args->val);// root is a shared variable
+    if(found) printf("YES\n");
+    else printf("NO\n");
 }
 
 
 int main(int argc, char* argv[])
 {
+    init_glob_vars();
     root = NULL;
     num_nodes = 0;
     fp = fopen(argv[1], "r");
@@ -277,17 +290,20 @@ int main(int argc, char* argv[])
             int x = strtod(strdup(word), &ptr);
 	    t_args->val = x;
 	    t_args->node = root;
-	    // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_insert_node,t_args));
-            root = insert_node(root, x);
-        }
-        else if(strcmp("delete", word) == 0)
-        {
+	    wait_all_finish();
+	    pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_insert_node,t_args);
+	    pthread_join(threads_arr[threads_arr_size-1],NULL);
+   //         root = insert_node(root, x);
+        }else if(strcmp("delete", word) == 0){
+        
             word = strtok(NULL,"\n");
             int x = strtod(strdup(word), &ptr);
 	    t_args->val = x;
 	    t_args->node = root;
-	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_delete_node,t_args));
-            root = delete_node(root, x);
+	    wait_all_finish();
+	    pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_delete_node,t_args);
+	    pthread_join((threads_arr[threads_arr_size-1]),NULL);
+     //       root = delete_node(root, x);
         }
         else if(strcmp("contains", word) == 0)
         {
@@ -295,27 +311,26 @@ int main(int argc, char* argv[])
             int x = strtod(strdup(word), &ptr);
             t_args->val = x;
             t_args->node = root;
-	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_contains_node,t_args));
-            if(contains_node(root, x)) printf("YES\n");
-            else printf("NO\n");
+	    pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_contains_node,t_args);
         }
         else if(strcmp("in", word) == 0)
         {
             word = strtok(NULL,"\n");
             t_args->node = root;
-	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_in_order,t_args));
-            in_order_traversal(root);
-            printf("\n");
+	    pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_in_order,t_args);
+            //in_order_traversal(root);
+      
         }
         else if(strcmp("pre", word) == 0)
         {
             word = strtok(NULL,"\n");
 	    t_args->node = root;
-	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_pre_order,t_args));
-            pre_order_traversal(root);
-            printf("\n");
+	    pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_pre_order,t_args);
+            //pre_order_traversal(root);
+           
         }
     }
+    wait_all_finish();
     fclose(fp);
     pre_order_traversal(root);
     /*
