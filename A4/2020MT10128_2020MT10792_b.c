@@ -317,7 +317,7 @@ int main(int argc, char* argv[])
         }
     }
     fclose(fp);
-    
+    pre_order_traversal(root);
     /*
     FILE* fp = fopen(argv[2], "w");
     fclose(fp);
