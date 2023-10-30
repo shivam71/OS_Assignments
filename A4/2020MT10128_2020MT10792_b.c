@@ -7,6 +7,9 @@
 #include<stdbool.h>
 
 FILE* fp;
+pthread_t* threads_arr;
+int threads_arr_size;
+int threads_arr_cap;
 
 //GLOBALS
 struct avl_node
@@ -19,6 +22,20 @@ struct avl_node
     pthread_mutex_t* node_lk;
 };
 typedef struct avl_node avl_node;
+
+
+struct args_{
+	avl_node* node;
+	int val;
+} typedef thread_args;
+
+
+
+void init_glob_vars(){
+	threads_arr_size = 0;
+	threads_arr_cap = 200;
+	threads_arr = malloc(threads_arr_cap*sizeof(pthread_t));
+}
 
 avl_node *newNode(int x)
 {
@@ -123,6 +140,9 @@ avl_node* in_successor(avl_node* node)
 
 
 //FUNCTIONS
+
+
+
 void pre_order_traversal(avl_node* node)
 {
     if(node == NULL) return;
@@ -131,6 +151,12 @@ void pre_order_traversal(avl_node* node)
     pre_order_traversal(node->right);
 }
 
+void* thread_pre_order(thread_args* args){
+	pre_order_traversal(args->node);
+}
+
+
+
 void in_order_traversal(avl_node* node)
 {
     if(node == NULL) return;
@@ -138,6 +164,11 @@ void in_order_traversal(avl_node* node)
     printf("%d ", node->data);
     in_order_traversal(node->right);
 }
+
+void* thread_in_order(thread_args* args){
+        in_order_traversal(args->node);
+}
+
 
 avl_node* insert_node(avl_node* node, int x)
 {
@@ -154,6 +185,11 @@ avl_node* insert_node(avl_node* node, int x)
     if(checkBalance(node)) return node;
     return balanceNode(node, x);
 }
+
+void* thread_insert_node(thread_args* args){
+    root =  insert_node(args->node,args->val);// root is a shared variable 
+}
+
 
 avl_node* delete_node(avl_node* node, int x)
 {
@@ -193,6 +229,11 @@ avl_node* delete_node(avl_node* node, int x)
     return balanceNode(node, x);
 }
 
+
+void* thread_delete_node(thread_args* args){
+    root =  delete_node(args->node,args->val);// root is a shared variable
+}
+
 bool contains_node(avl_node* node, int x)
 {
     //printf("CHECK %d\n", x);
@@ -201,6 +242,11 @@ bool contains_node(avl_node* node, int x)
     if(x < node->data) return contains_node(node->left, x);
     return contains_node(node->right, x);
 }
+
+void* thread_contains_node(thread_args* args){
+    bool found =  contains_node(args->node,args->val);// root is a shared variable
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -212,41 +258,60 @@ int main(int argc, char* argv[])
         return 1;
     }
     // reading line by line, max 256 bytes
+    thread_args* t_args;
     const unsigned MAX_LENGTH = 256;
     char buffer[MAX_LENGTH];
     while (fgets(buffer, MAX_LENGTH, fp)){
         //tokenise buffer
+	threads_arr_size++;
+	if(threads_arr_size==threads_arr_cap){
+		threads_arr_cap*=2;
+		threads_arr = realloc(threads_arr,threads_arr_cap*sizeof(pthread_t));
+	}
         char* ptr;
         char *word = strtok(strdup(buffer)," ");
+	t_args = malloc(sizeof(thread_args));
         if(strcmp("insert", word) == 0)
         {
             word = strtok(NULL,"\n");
             int x = strtod(strdup(word), &ptr);
+	    t_args->val = x;
+	    t_args->node = root;
+	    // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_insert_node,t_args));
             root = insert_node(root, x);
         }
         else if(strcmp("delete", word) == 0)
         {
             word = strtok(NULL,"\n");
             int x = strtod(strdup(word), &ptr);
+	    t_args->val = x;
+	    t_args->node = root;
+	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_delete_node,t_args));
             root = delete_node(root, x);
         }
         else if(strcmp("contains", word) == 0)
         {
             word = strtok(NULL,"\n");
             int x = strtod(strdup(word), &ptr);
-            
+            t_args->val = x;
+            t_args->node = root;
+	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_contains_node,t_args));
             if(contains_node(root, x)) printf("YES\n");
             else printf("NO\n");
         }
         else if(strcmp("in", word) == 0)
         {
             word = strtok(NULL,"\n");
+            t_args->node = root;
+	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_in_order,t_args));
             in_order_traversal(root);
             printf("\n");
         }
         else if(strcmp("pre", word) == 0)
         {
             word = strtok(NULL,"\n");
+	    t_args->node = root;
+	     // pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_pre_order,t_args));
             pre_order_traversal(root);
             printf("\n");
         }
