@@ -159,7 +159,7 @@ char* read_file1(FILE* file_ptr){
                 c = fgetc(file_ptr);
         }
         string_read[bytes_read] = '\0';
-        printf("Reading complete\n");
+       // printf("Reading complete\n");
         return string_read;
 }
 
@@ -169,9 +169,9 @@ int write_file(char* string_write,FILE* file_ptr){
 	int bytes_written = 0;// include the one byte corresponding to '\n'
 	// add a new line
 	long f_ptr_pos = ftell(file_ptr);
-	printf("%ld file pointer pos",f_ptr_pos);
+	//printf("%ld file pointer pos",f_ptr_pos);
 	if(f_ptr_pos!=((long)0)){
-		printf("Printing new line");
+		//printf("Printing new line");
 		bytes_written++;
 	fputc('\n',file_ptr);// What if the file is empty ?
 	}
@@ -196,7 +196,7 @@ void* read1(thread_args* args){
 	// Why not acquire a lock here to print the number of readers and writers
 	//printf("About to acquire lock\n");
 	pthread_mutex_lock(&total_rw_info_lock);
-       	printf("read %d bytes with %d reader and %d writer present\n",bytes_read,readers_with_lk,writers_with_lk);
+       	printf("read %s of %d bytes with %d readers and %d writers present\n",args->fname_1,bytes_read,readers_with_lk,writers_with_lk);
         pthread_mutex_unlock(&total_rw_info_lock);
 	readunlock(args->flock_1);
 	return NULL;
@@ -205,17 +205,17 @@ void* read1(thread_args* args){
 
 void* write1(thread_args* args){
 	//char* string_read= NULL;
-	printf("Before seg 0\n");
+	//printf("Before seg 0\n");
 	int bytes_read = 0;
 	char* string_read = NULL;
 	int bytes_written = 0;
 	readlock(args->flock_2);
 	FILE* file_ptr = fopen(args->fname_2,"r");
         string_read = read_file1(file_ptr);
-	printf("Before seg 2\n");
+	//printf("Before seg 2\n");
 	fclose(file_ptr);
 	readunlock(args->flock_2); 
-	printf("Before seg\n");
+	//printf("Before seg\n");
 
 
 	writelock(args->flock_1);
@@ -223,7 +223,7 @@ void* write1(thread_args* args){
 	bytes_written = write_file(string_read,file_ptr);
 	fclose(file_ptr);
 	pthread_mutex_lock(&total_rw_info_lock);
-        printf("wrote %d bytes with %d reader and %d writer present\n",bytes_written,readers_with_lk,writers_with_lk);
+        printf("writing to %s added %d bytes with %d readers and %d writers present\n",args->fname_1,bytes_written,readers_with_lk,writers_with_lk);
         pthread_mutex_unlock(&total_rw_info_lock);
 	writeunlock(args->flock_1);
 	return NULL;
@@ -236,7 +236,7 @@ void* write2(thread_args* args){
 	bytes_written = write_file(args->line,file_ptr);
 	fclose(file_ptr);
 	pthread_mutex_lock(&total_rw_info_lock);
-        printf("wrote %d bytes with %d reader and %d writer present\n",bytes_written,readers_with_lk,writers_with_lk);
+	printf("writing to %s added %d bytes with %d readers and %d writers present\n",args->fname_1,bytes_written,readers_with_lk,writers_with_lk);
         pthread_mutex_unlock(&total_rw_info_lock);
 	writeunlock(args->flock_1);
 	return NULL;
@@ -321,7 +321,7 @@ void parse_input(){
 
 void wait_all_finish(){
 	for(int i = 0;i<threads_arr_size;i++){
-		pthread_join(&threads_arr[i],NULL);
+		pthread_join(threads_arr[i],NULL);
 	}
 }
 
@@ -337,7 +337,7 @@ int main(){
     rw_file_lk* f2_lk;
     allocate_mem_input();
     thread_args* args;
-    sleep(10);
+    //sleep(10);
     while(gets(user_input)){
 	user_input[strcspn(user_input,"\n")] = '\0';
 	if(strlen(user_input)==0) continue;
@@ -375,6 +375,7 @@ int main(){
 	}else if(strcmp(command,"exit")==0){
 		// wait till all the child threads have completed 
 		wait_all_finish();
+		break;
 	}else{
 		printf("Invalid input try again!!\n");
 		continue;

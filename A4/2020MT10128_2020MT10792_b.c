@@ -265,16 +265,16 @@ int main(int argc, char* argv[])
     init_glob_vars();
     root = NULL;
     num_nodes = 0;
-    fp = fopen(argv[1], "r");
+    /*fp = fopen(argv[1], "r");
     if(NULL == fp){
         printf("File can't be opened\n");
         return 1;
-    }
+    }*/
     // reading line by line, max 256 bytes
     thread_args* t_args;
     const unsigned MAX_LENGTH = 256;
     char buffer[MAX_LENGTH];
-    while (fgets(buffer, MAX_LENGTH, fp)){
+    while (fgets(buffer, MAX_LENGTH, stdin)){
         //tokenise buffer
 	threads_arr_size++;
 	if(threads_arr_size==threads_arr_cap){
@@ -283,6 +283,7 @@ int main(int argc, char* argv[])
 	}
         char* ptr;
         char *word = strtok(strdup(buffer)," ");
+//	printf("%s",word);
 	t_args = malloc(sizeof(thread_args));
         if(strcmp("insert", word) == 0)
         {
@@ -328,10 +329,13 @@ int main(int argc, char* argv[])
 	    pthread_create(&(threads_arr[threads_arr_size-1]),NULL,thread_pre_order,t_args);
             //pre_order_traversal(root);
            
-        }
+        }else if(strcmp("exit\n",word)==0){
+		break;	
+	
+	}
     }
     wait_all_finish();
-    fclose(fp);
+    //fclose(fp);
     pre_order_traversal(root);
     /*
     FILE* fp = fopen(argv[2], "w");
