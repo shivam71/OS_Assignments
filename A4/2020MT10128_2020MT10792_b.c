@@ -68,6 +68,10 @@ bool checkBalance(avl_node* node)
     if(x == 0 || x == 1 || x == -1) return true;
     return false;
 }
+void updateHeight(avl_node* node)
+{
+    node->height = max(getHeight(node->left), getHeight(node->right)) + 1;
+}
 
 //ROTATIONS
 avl_node* SingleLeftRotation(avl_node* node)
@@ -80,8 +84,8 @@ avl_node* SingleLeftRotation(avl_node* node)
     node->right = T2;
     
     //update height
-    node->height = max(getHeight(node->left), getHeight(node->right)) + 1;
-    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+    updateHeight(node);
+    updateHeight(y);
     return y;
 }
 
@@ -95,8 +99,8 @@ avl_node* SingleRightRotation(avl_node* node)
     node->left = T3;
     
     //update height
-    node->height = max(getHeight(node->left), getHeight(node->right)) + 1;
-    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+    updateHeight(node);
+    updateHeight(y);
     return y;
 }
 
@@ -181,7 +185,7 @@ avl_node* insert_node(avl_node* node, int x)
     else if(x > node->data)
         node->right = insert_node(node->right, x);
     
-    node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+    updateHeight(node);
     if(checkBalance(node)) return node;
     return balanceNode(node, x);
 }
@@ -203,12 +207,9 @@ avl_node* delete_node(avl_node* node, int x)
         node->right = delete_node(node->right, x);
     else
     {
-        avl_node* temp;
         if(node->left == NULL && node->right == NULL)
-        {
-            node = NULL;
-            return node;
-        }
+            return node = NULL;
+        avl_node* temp;
         if(node->left == NULL || node->right == NULL)
         {
             if(node->left == NULL) temp = node->right;
@@ -223,8 +224,7 @@ avl_node* delete_node(avl_node* node, int x)
             node->right = delete_node(node->right, temp->data);
         }
     }
-    
-    node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+    updateHeight(node);
     if(checkBalance(node)) return node;
     return balanceNode(node, x);
 }
