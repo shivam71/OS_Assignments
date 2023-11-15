@@ -8,7 +8,7 @@
 char* target;
 char path[256];// For storing the path 
 int type; // 0 file 1 dir and 2 link 
-
+bool found;
 int find_type(mode_t entry_mode){ // using the file stats determines the type
 	if(S_ISDIR(entry_mode)){//Check directory 
 		return 1;
@@ -19,15 +19,25 @@ int find_type(mode_t entry_mode){ // using the file stats determines the type
         }else{
 		return -1;// Any other
 	}
+
 }
 
-bool search_directory(){
+void print_path(int type){
+	if(type==0){
+           printf("File found: %s/%s\n",path,target);
+        }else if(type==1){
+           printf("Directory found: %s/%s\n",path,target);
+        }else{
+           printf("Link found: %s/%s\n",path,target);
+       }
+}
+
+void search_directory(){
 	// Recursively searches for the target in the current directory 
 	DIR* cdir_ptr = opendir(".");
 	struct dirent* entry;
 	struct stat entry_stats;
 	mode_t entry_mode;
-	bool found;
 	int entry_type;
 	while(entry = readdir(cdir_ptr)){
 		// skip the current dir and the parent dir entries 
@@ -41,17 +51,16 @@ bool search_directory(){
 		if(strcmp(entry->d_name,target)==0){// if the name of the entry matches target then store the path and return 
 			getcwd(path,256);
 			type = entry_type;
-			return true;
+			found=true;
+			print_path(type);
 		}
 		// recursively search the sub directory in case the entry is a directory 
 		if(S_ISDIR(entry_mode)){
 			chdir(entry->d_name);// Enter that directory 
-			found = search_directory();
+			search_directory();
 			chdir("..");// return back to the cdir
-			if(found) return true;
 		}
 	}
-	return false;
 }
 
 
@@ -62,14 +71,10 @@ int main(int argc,char *argv[]){
 		return 1;
 	}
 	target = argv[1];// Traget name
-	if(search_directory()){
-		if(type==0){
-			printf("File found: %s/%s\n",path,target);
-		}else if(type==1){
-			printf("Directory found: %s/%s\n",path,target);
-		}else{
-			printf("Link found: %s/%s\n",path,target);
-		}
+	found = false;
+	search_directory();
+	if(found){
+		// already the path was printed 
 	}else{
 		printf("The target '%s' was not found in the current directory\n",target);
 	}
